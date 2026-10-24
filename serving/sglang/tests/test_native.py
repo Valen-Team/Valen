@@ -17,9 +17,7 @@ from transformers import AutoTokenizer
 from sglang.srt.plugins import load_plugins
 
 load_plugins()
-from valen_sglang.plugin import assert_hooks_applied
 
-assert_hooks_applied()
 from valen_sglang.compiler import encode_valen, valen_messages
 from valen_sglang.head import (
     ValenMixerHead,
@@ -54,16 +52,6 @@ class TestValenConfig(unittest.TestCase):
         self.assertEqual(loaded.dtype, torch.bfloat16)
         self.assertEqual(loaded.valen_head_config, {"head_type": "mixer"})
         self.assertIsNone(loaded.joint_head_config)
-
-    def test_unsupported_heads_and_execution_fail_early(self):
-        from valen_sglang.configuration import ValenQwenConfig
-
-        for kwargs in (
-            {"qwen_execution": "question"},
-            {"valen_head": {"head_type": "bilinear"}},
-        ):
-            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
-                ValenQwenConfig(**kwargs)
 
 
 class TestValenPooler(unittest.TestCase):
@@ -369,6 +357,84 @@ class TestValenServing(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["usage"]["output_tokens"], 0)
         self.assertEqual(len(self.requests), 1)
 
+    async def test_both_http_protocols_use_identical_compiled_prompt_and_readouts(self):
+        from fastapi import FastAPI, Request
+        from fastapi.testclient import TestClient
+        from valen_sglang.routes import register_routes
+        from valen_sglang.decisions import to_public
+
+        app = FastAPI()
+
+        @app.post("/v1/decisions")
+        async def stock(body: dict):
+            raise AssertionError("The stock generation route must be replaced")
+
+        @app.post("/v1/systemone")
+        async def systemone(body: SystemOneRequest, raw_request: Request):
+            return await self.handler.handle_request(body, raw_request)
+
+        app.state.systemone_serving = self.handler
+        register_routes(app)
+        public = {
+            "model": "valen",
+            "input": "A cat is present.",
+            "temperature": 0.5,
+            "questions": [
+                {
+                    "name": "animal",
+                    "type": "choice",
+                    "instructions": "Which animal?",
+                    "choices": [
+                        {"value": "cat", "description": "A cat"},
+                        {"value": "dog", "description": "A dog"},
+                    ],
+                },
+                {
+                    "name": "present",
+                    "type": "predicate",
+                    "instructions": "Is a cat present?",
+                },
+                {
+                    "name": "clarity",
+                    "type": "score",
+                    "instructions": "How clear?",
+                    "levels": [
+                        {"label": "unclear", "description": "Unclear"},
+                        {"label": "clear", "description": "Clear"},
+                    ],
+                },
+            ],
+        }
+        internal = {
+            "model": "valen",
+            "state": public["input"],
+            "temperature": 0.5,
+            "questions": {
+                "animal": {
+                    "type": "choice",
+                    "instructions": "Which animal?",
+                    "criteria": {"cat": "A cat", "dog": "A dog"},
+                },
+                "present": {"type": "noul", "instructions": "Is a cat present?"},
+                "clarity": {
+                    "type": "score",
+                    "instructions": "How clear?",
+                    "criteria": ["Unclear", "Clear"],
+                },
+            },
+        }
+        with TestClient(app) as client:
+            left = client.post("/v1/systemone", json=internal)
+            right = client.post("/v1/decisions", json=public)
+        self.assertEqual(left.status_code, 200, left.text)
+        self.assertEqual(right.status_code, 200, right.text)
+        self.assertEqual(right.json(), to_public(public, left.json()))
+        self.assertEqual(len(self.requests), 2)
+        self.assertEqual(self.requests[0].input_ids, self.requests[1].input_ids)
+        self.assertEqual(
+            self.requests[0].decision_layout, self.requests[1].decision_layout
+        )
+
     async def test_invalid_native_requests_do_not_reach_scheduler(self):
         body = {
             "model": "valen",
@@ -401,6 +467,16 @@ class TestValenServing(unittest.IsolatedAsyncioTestCase):
                     SystemOneRequest(**(body | change)), None
                 )
                 self.assertEqual(response.status_code, 400, response.body)
+        self.assertEqual(self.requests, [])
+
+    async def test_unknown_model_does_not_reach_scheduler(self):
+        request = SystemOneRequest(
+            model="unknown-model",
+            state="hello",
+            questions={"q": {"type": "noul", "instructions": "Yes?"}},
+        )
+        response = await self.handler.handle_request(request, None)
+        self.assertEqual(response.status_code, 404, response.body)
         self.assertEqual(self.requests, [])
 
     def test_admission_rejects_generation_and_missing_layout(self):

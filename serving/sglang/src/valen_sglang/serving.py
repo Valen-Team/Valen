@@ -6,6 +6,7 @@ uses SGLang's System One answer helpers (Apache-2.0; see NOTICE).
 
 import math
 
+from fastapi import HTTPException
 from fastapi.responses import ORJSONResponse
 
 from sglang.srt.entrypoints.systemone.protocol import SystemOneResponse, SystemOneUsage
@@ -30,9 +31,18 @@ class ValenSystemOneServing(StockSystemOneServing):
             self.tokenizer_manager.model_config, "valen_head_config", None
         )
 
+        if self.valen_head_config is not None:
+            from valen_sglang.routes import register_routes
+
+            register_routes()
+
     def _validate_request(self, request):
         if self.valen_head_config is not None:
+            if request.model != self.tokenizer_manager.served_model_name:
+                raise HTTPException(404, "Unknown served model")
             return self._validate_joint_schema_request(request)
+        if "temperature" in request.model_fields_set:
+            return "Temperature calibration requires a Valen checkpoint"
         # The shared HTTP schema admits native heads' larger score lists, but
         # generative models still have only their original ten token labels.
         if self.joint_head_config is None and any(
@@ -105,7 +115,9 @@ class ValenSystemOneServing(StockSystemOneServing):
             scores = logits[offset : offset + len(question_names)]
             offset += len(question_names)
             top = max(scores)
-            weights = [math.exp(score - top) for score in scores]
+            weights = [
+                math.exp((score - top) / request.temperature) for score in scores
+            ]
             total = math.fsum(weights)
             by_name = {
                 name: weight / total for name, weight in zip(question_names, weights)

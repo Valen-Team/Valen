@@ -173,6 +173,121 @@ def validate_response(response):
             raise ValueError("Invalid decision probabilities")
 
 
+def decisions_request(request):
+    """Express a parity case in the public protocol without changing its prompt."""
+    state = copy.deepcopy(request["state"])
+    if isinstance(state, dict):
+        state = state["messages"]
+        for message in state:
+            if isinstance(message["content"], str):
+                continue
+            for part in message["content"]:
+                if part["type"] == "text":
+                    part["type"] = "input_text"
+                else:
+                    part["type"] = "input_image"
+                    part["image_url"] = part["image_url"]["url"]
+    questions = []
+    for name, q in request["questions"].items():
+        item = {
+            "name": name,
+            "type": "predicate" if q["type"] == "noul" else q["type"],
+            "instructions": q["instructions"],
+        }
+        if q["type"] == "choice":
+            item["choices"] = [
+                {"value": key, "description": value}
+                for key, value in q["criteria"].items()
+            ]
+        elif q["type"] == "score":
+            item["levels"] = [
+                {"label": str(i), "description": value}
+                for i, value in enumerate(q["criteria"])
+            ]
+        questions.append(item)
+    return {
+        "model": request["model"],
+        "input": state,
+        "questions": questions,
+        "temperature": request.get("temperature", 1.0),
+    }
+
+
+def normalize_decisions(request, response):
+    """Check typed public answers and align them with the native parity schema."""
+    response = dict(response)
+    items = response["answers"]
+    if not isinstance(items, list) or len(items) != len(request["questions"]):
+        raise ValueError("Expected one ordered public answer per question")
+    answers = {}
+    for (name, q), item in zip(request["questions"].items(), items):
+        kind = "predicate" if q["type"] == "noul" else q["type"]
+        if item["name"] != name or item["type"] != kind:
+            raise ValueError("Public answer order, name or type differs")
+        if kind == "predicate":
+            answer = {"type": "noul", "noul": item["probability"]}
+        else:
+            keys = (
+                list(q["criteria"])
+                if kind == "choice"
+                else [str(i) for i in range(len(q["criteria"]))]
+            )
+            entries = item["probabilities"]
+            labels = [
+                entry["value"] if kind == "choice" else entry["label"]
+                for entry in entries
+            ]
+            if labels != keys:
+                raise ValueError("Public candidate values or labels differ")
+            if kind == "score" and [entry["value"] for entry in entries] != list(
+                range(len(keys))
+            ):
+                raise ValueError("Public score indices differ")
+            answer = {
+                "type": kind,
+                "probabilities": {
+                    key: entry["probability"] for key, entry in zip(keys, entries)
+                },
+                "confidence": item["confidence"],
+                kind: item[kind],
+            }
+            if kind == "score":
+                answer["legend"] = dict(zip(keys, q["criteria"]))
+        answers[name] = answer
+    response["answers"] = answers
+    return response
+
+
+def protocol_error(left, right):
+    if left["usage"] != right["usage"] or left["model"] != right["model"]:
+        raise ValueError("Protocols returned different usage or models")
+    if left["answers"].keys() != right["answers"].keys():
+        raise ValueError("Protocols returned different question keys")
+    error = 0.0
+    for key, old in left["answers"].items():
+        new = right["answers"][key]
+        if old["type"] != new["type"]:
+            raise ValueError("Protocols returned different answer types")
+        if old["type"] == "noul":
+            error = max(error, abs(old["noul"] - new["noul"]))
+        else:
+            if old["probabilities"].keys() != new["probabilities"].keys():
+                raise ValueError("Protocols returned different candidates")
+            error = max(
+                error,
+                abs(old["confidence"] - new["confidence"]),
+                *(
+                    abs(p - new["probabilities"][k])
+                    for k, p in old["probabilities"].items()
+                ),
+            )
+            if old["type"] == "choice" and old["choice"] != new["choice"]:
+                raise ValueError("Protocols selected different choices")
+            if old["type"] == "score":
+                error = max(error, abs(old["score"] - new["score"]))
+    return error
+
+
 def native(args, requests):
     import requests as http
 
@@ -198,7 +313,7 @@ def native(args, requests):
         command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
     )
 
-    def score(request):
+    def score(request, protocol="systemone"):
         request = copy.deepcopy(request)
         if isinstance(request.get("state"), dict):
             import base64
@@ -216,11 +331,17 @@ def native(args, requests):
                             + base64.b64encode(path.read_bytes()).decode()
                         )
         start = time.perf_counter()
-        response = http.post(
-            url + "/v1/systemone", json={"model": "valen", **request}, timeout=180
+        native_request = {"model": "valen", **request}
+        payload = (
+            native_request
+            if protocol == "systemone"
+            else decisions_request(native_request)
         )
+        response = http.post(url + "/v1/" + protocol, json=payload, timeout=180)
         response.raise_for_status()
         result = response.json()
+        if protocol == "decisions":
+            result = normalize_decisions(native_request, result)
         validate_response(result)
         return result, time.perf_counter() - start
 
@@ -240,6 +361,32 @@ def native(args, requests):
             time.sleep(2)
         else:
             raise TimeoutError("vLLM did not become ready within 600 seconds")
+        protocol_checks = []
+        for index, request in enumerate(requests):
+            for temperature in (0.5, 1.0, 2.0) if index == 0 else (1.0,):
+                case = {**request, "temperature": temperature}
+                old, _ = score(case, "systemone")
+                public, _ = score(case, "decisions")
+                error = protocol_error(old, public)
+                protocol_checks.append(
+                    {
+                        "case": index,
+                        "temperature": temperature,
+                        "max_error": error,
+                        "systemone": old,
+                        "decisions": public,
+                    }
+                )
+                if error > args.tolerance:
+                    raise ValueError(f"Protocol parity error {error} exceeds tolerance")
+        for protocol in ("systemone", "decisions"):
+            invalid = {"model": "not-the-served-model", **requests[0]}
+            payload = invalid if protocol == "systemone" else decisions_request(invalid)
+            if (
+                http.post(url + "/v1/" + protocol, json=payload, timeout=30).status_code
+                != 404
+            ):
+                raise ValueError("Unknown model was not rejected")
         answers, timings = [], []
         for request in requests:
             score(request)
@@ -250,12 +397,23 @@ def native(args, requests):
             copy.deepcopy(requests[i % len(requests)]) for i in range(20)
         ]
         start = time.perf_counter()
+
+        def concurrent_score(item):
+            index, request = item
+            return score(request, "decisions" if index % 2 else "systemone")
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            batch = list(pool.map(score, concurrent_requests))
+            batch = list(pool.map(concurrent_score, enumerate(concurrent_requests)))
         elapsed = time.perf_counter() - start
         result = {
             "answers": answers,
             "median_seconds": timings,
+            "protocol_checks": protocol_checks,
+            "protocol_max_error": max(row["max_error"] for row in protocol_checks),
+            "both_protocols_validated": True,
+            "concurrent_protocols": [
+                "decisions" if i % 2 else "systemone" for i in range(len(batch))
+            ],
             "concurrent_answers": [a for a, _ in batch],
             "concurrent_seconds": elapsed,
             "concurrent_requests_per_second": len(batch) / elapsed,
@@ -282,6 +440,19 @@ def compare(args):
         raise ValueError("Expected all five parity cases")
     if len(native["concurrent_answers"]) != 20:
         raise ValueError("Expected all twenty concurrent responses")
+    if (
+        not native.get("both_protocols_validated")
+        or len(native.get("protocol_checks", [])) != 7
+    ):
+        raise ValueError("Expected all seven dual-protocol and temperature checks")
+    protocol_max_error = max(
+        protocol_error(row["systemone"], row["decisions"])
+        for row in native["protocol_checks"]
+    )
+    if protocol_max_error > args.tolerance:
+        raise ValueError("Dual-protocol parity failed")
+    if set(native.get("concurrent_protocols", [])) != {"systemone", "decisions"}:
+        raise ValueError("Expected mixed-protocol concurrent requests")
     rows = []
     max_error = 0.0
     tokens_match = True
@@ -347,6 +518,8 @@ def compare(args):
             batch_error = max(batch_error, *values)
     result = {
         "cases": rows,
+        "both_protocols_validated": True,
+        "protocol_max_error": protocol_max_error,
         "tokens_match": tokens_match,
         "choices_match": choices_match,
         "max_probability_error": max_error,

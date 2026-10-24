@@ -1,122 +1,234 @@
-# Valen SGLang serving kit
+# Deploy with the SGLang plugin
 
-Install native Valen decision support as a small `valen-sglang` wheel in an existing, compatible SGLang environment. This is a deployment alternative to the prebuilt Valen-Team image and direct Transformers inference; it uses the same SGLang engine as the image.
+Install the Valen plugin in an official SGLang environment and start a local HTTP inference service.
 
-See `VALIDATION.md` for the exact environment and completed checks before using it in a deployment.
+## Requirements
 
-## What gets installed
+Linux x86-64, an NVIDIA GPU supporting FA3 (such as H100 or H200), a compatible CUDA driver, and Docker with NVIDIA Container Toolkit. You can also install the plugin directly in an existing SGLang Python environment.
 
-The wheel contains the Valen config, shared-state prompt compiler, FP32 Mixer head, and model/request adapters. Its `sglang.srt.plugins` entry point registers these through SGLang's general-plugin hooks. It does not include a SGLang source tree, replace the engine package, modify checkpoint files, or patch installed engine files.
+## Build the kit
 
-The adapters reuse stock Qwen3.5 execution and the stock embedding scheduler. They extend the existing `/v1/systemone` route. Other models keep the stock implementation; generative decision requests retain their ten-level score limit.
-
-## Supported environment
-
-- Linux x86-64, an NVIDIA H200, and a compatible CUDA 13 runtime. Other GPUs have not been validated with this kit.
-- **Unmodified official SGLang commit `c1c287a42928495166e14dbcef31b9e1f1dac199`.** The matching official base is `docker.io/lmsysorg/sglang@sha256:a8eedda74b54f7dfecc445ee66d298f8d8f6f50192201a53b0a6dd7571ff8d26`.
-- The pinned runtime in `valen_sglang/runtime-lock.json`, including PyTorch 2.14.1, Transformers 5.19.0, sglang-kernel 0.4.10, FlashInfer 0.6.18, and CUTLASS DSL 4.6.2.
-
-This first version deliberately checks ten critical engine source files by SHA256 and refuses incompatible releases, including the Valen fork/image that already embeds Valen support. Do not bypass that check or assume a fresh `pip install sglang` gives this exact engine.
-
-`install.sh` is intended for that prepared SGLang environment, not an empty Python venv. It replaces selected runtime package versions. Keep Transformers training/inference dependencies in a separate environment.
-
-## Install and run
-
-A built checkpoint-side kit contains:
-
-```text
-sglang/
-  valen_sglang-<version>-py3-none-any.whl
-  install.sh
-  serve.sh
-  example_client.py
-  validate.py
-  README.md
-  README_zh.md
-  VALIDATION.md
-  LICENSE
-  NOTICE
-  SHA256SUMS
-```
-
-Inside the supported environment, use the checkpoint's kit directory:
+Get the [Valen source](https://github.com/Valen-Team/Valen) and build the wheel and kit from the repository root. Copy `serving-kit/sglang/` and a complete checkpoint to the GPU host.
 
 ```bash
-bash /path/to/checkpoint/sglang/install.sh
-MODEL=/path/to/checkpoint \
-  CUDA_VISIBLE_DEVICES=0 \
-  bash /path/to/checkpoint/sglang/serve.sh
+python -m pip install build
+python -m build --wheel serving/sglang
+python serving/sglang/build_kit.py \
+  serving/sglang/dist/valen_sglang-0.1.0.dev3-py3-none-any.whl \
+  ./serving-kit/sglang
 ```
 
-No Valen repository installation, SGLang fork checkout, custom Valen image build, or `trust_remote_code` is needed by the server. An existing compatible environment can be a Python installation or an official SGLang container. If using a container, mount the complete checkpoint and kit into it first; set `HOST=0.0.0.0` inside the container and bind the published host port to localhost.
+## Prepare the runtime
 
-The installer verifies bundle checksums, installs one plugin wheel, checks engine compatibility, pins the tested runtime, removes an incompatible FlashInfer JIT cache, and checks runtime versions. FlashInfer cubin uses `https://flashinfer.ai/whl`; the other packages use the environment's pip index. For offline installs, predownload all required wheels and set `PIP_NO_INDEX=1 PIP_FIND_LINKS=/path/to/wheels`. A complete SGLang environment is still required.
-
-Kernel packages are installed without re-resolving their transitive dependencies: the pinned official environment supplies them. This is a curated runtime, not a guarantee that arbitrary pip dependency combinations or a global `pip check` will pass.
-
-`serve.sh` exposes these settings:
-
-| Variable | Default |
-| --- | --- |
-| `MODEL` | `Valen-Team/Valen-2B` |
-| `REVISION` | unset; use a fixed Hub revision for reproducibility |
-| `MODEL_NAME` | `valen` |
-| `HOST` | `127.0.0.1` |
-| `PORT` | `30000` |
-| `CUDA_VISIBLE_DEVICES` | select one GPU in the caller |
-
-Extra arguments are passed to the engine. The script uses FA3. The launcher checks the engine and runtime before startup and requires every Valen hook to load successfully. If `SGLANG_PLUGINS` is set, it must include `valen`.
-
-## Send requests
-
-Wait for the startup warmup to finish, then use a second terminal in the same client environment:
+Use the official SGLang image. Replace the kit and checkpoint paths below:
 
 ```bash
-python /path/to/checkpoint/sglang/example_client.py
-python /path/to/checkpoint/sglang/example_client.py --image /path/to/cat.jpg
+docker run --rm -it --gpus device=0 --ipc=host \
+  -p 127.0.0.1:30000:30000 \
+  -v /absolute/path/to/serving-kit/sglang:/opt/valen-kit:ro \
+  -v /absolute/path/to/Valen-2B:/models/Valen-2B:ro \
+  --entrypoint bash \
+  docker.io/lmsysorg/sglang:latest
 ```
 
-The endpoint and JSON contract match the Valen-Team image:
+Inside the container, `/opt/valen-kit` and `/models/Valen-2B` refer to those mounts. In an existing Python environment, substitute the actual paths below.
+
+## Install and start
+
+Install the plugin and start the service inside the container:
+
+```bash
+bash /opt/valen-kit/install.sh
+MODEL=/models/Valen-2B MODEL_NAME=valen HOST=0.0.0.0 \
+  CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh
+```
+
+| Setting | Example | Purpose |
+| --- | --- | --- |
+| `MODEL` | `/models/Valen-2B` | Complete checkpoint directory |
+| `MODEL_NAME` | `valen` | Model name sent in requests |
+| `HOST` / `PORT` | `0.0.0.0` / `30000` | Listen address and port inside the container |
+
+After startup, access the service from the host at `http://127.0.0.1:30000`.
+
+## Send a request
+
+Send a text request using SystemOne or Decisions:
+
+| Protocol | Request structure | Predicate probability in the example |
+| --- | --- | --- |
+| SystemOne | `state` + questions keyed by ID | `answers.on_sofa.noul` |
+| Decisions | `input` + question list | `answers[0].probability` |
+
+The request `model` must match the configured served model name. `temperature` defaults to `1.0` and must be a finite number greater than zero.
+
+### Decisions
+
+```bash
+curl http://127.0.0.1:30000/v1/decisions \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "model": "valen",
+  "input": "A cat is on the sofa.",
+  "questions": [
+    {
+      "name": "on_sofa",
+      "type": "predicate",
+      "instructions": "The cat is on the sofa."
+    }
+  ],
+  "temperature": 1
+}'
+```
+
+### SystemOne
 
 ```bash
 curl http://127.0.0.1:30000/v1/systemone \
   -H 'Content-Type: application/json' \
-  -d '{"model":"valen","state":"A cat is on the sofa.","questions":{"on_sofa":{"type":"noul","instructions":"The cat is on the sofa."}}}'
+  -d '{
+  "model": "valen",
+  "state": "A cat is on the sofa.",
+  "questions": {
+    "on_sofa": {
+      "type": "noul",
+      "instructions": "The cat is on the sofa."
+    }
+  },
+  "temperature": 1
+}'
 ```
 
-The response's `answers` object is keyed by question ID. `choice` returns named candidate probabilities; `noul` returns the probability of the statement; `score` returns an expected zero-based level and its distribution. Use `criteria` mappings for choice, ordered criteria lists for score, and no criteria override for noul.
 
-This is the local API, distinct from the hosted `/v1/decisions` payload.
+## Send an image request
 
-## Scope
+Run `python -m pip install requests` in the client environment and replace `cat.jpg` with a local PNG, JPEG, or WebP image. The Python example reads the file, infers its MIME type from the filename, and encodes it as a data URL.
 
-- Published full Valen Qwen3.5 Mixer checkpoints, `shared_state` execution, one GPU, TP=PP=1.
-- Text and images; choice with 1–255 candidates, noul, score with 2–255 levels.
-- BF16 backbone for the published checkpoint's auto dtype; FP32 decision-head parameters and pooling.
-- No direct `video_url`, speculative decoding, distributed decision heads, quantization, or adapter-only checkpoints in this version.
-- One complete prefill per request; prefix reuse, chunked prefill and CUDA graphs are disabled for the decision path.
+SystemOne uses `image_url` content blocks in `state.messages`; Decisions uses `input_image` content blocks in `input`. Both examples send the model name `valen`.
 
-## Validate a new checkpoint
+### Decisions
+
+```python
+import base64
+import mimetypes
+from pathlib import Path
+
+import requests
+
+image_path = Path("cat.jpg")
+mime_type = mimetypes.guess_type(image_path.name)[0]
+image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
+image_url = f"data:{mime_type};base64,{image_b64}"
+
+response = requests.post(
+    "http://127.0.0.1:30000/v1/decisions",
+    json={
+        "model": "valen",
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_image",
+                        "image_url": image_url
+                    },
+                    {
+                        "type": "input_text",
+                        "text": "Inspect this image."
+                    }
+                ]
+            }
+        ],
+        "questions": [
+            {
+                "name": "animal",
+                "type": "choice",
+                "instructions": "Which animal is visible?",
+                "choices": [
+                    {
+                        "value": "cat",
+                        "description": "A cat"
+                    },
+                    {
+                        "value": "dog",
+                        "description": "A dog"
+                    }
+                ]
+            }
+        ],
+        "temperature": 1
+    },
+    timeout=120,
+)
+response.raise_for_status()
+print(response.json()["answers"])
+```
+
+### SystemOne
+
+```python
+import base64
+import mimetypes
+from pathlib import Path
+
+import requests
+
+image_path = Path("cat.jpg")
+mime_type = mimetypes.guess_type(image_path.name)[0]
+image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
+image_url = f"data:{mime_type};base64,{image_b64}"
+
+response = requests.post(
+    "http://127.0.0.1:30000/v1/systemone",
+    json={
+        "model": "valen",
+        "state": {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": "Inspect this image."
+                        }
+                    ]
+                }
+            ]
+        },
+        "questions": {
+            "animal": {
+                "type": "choice",
+                "instructions": "Which animal is visible?",
+                "criteria": {
+                    "cat": "A cat",
+                    "dog": "A dog"
+                }
+            }
+        },
+        "temperature": 1
+    },
+    timeout=120,
+)
+response.raise_for_status()
+print(response.json()["answers"])
+```
+
+
+## Supported scope
+
+Full Valen Qwen3.5 Mixer checkpoints, `shared_state` execution, one GPU, TP=PP=1. Text and images support predicate, choice, and score questions: choice has 1–255 candidates; score has 2–255 ordered levels. For video, extract frames and submit them as image inputs.
+
+See [SystemOne](https://valen-team.github.io/docs/valen/api/systemone/) and [Decisions](https://valen-team.github.io/docs/valen/api/decisions/) for question and answer structures.
+
+Command-line client:
 
 ```bash
-python /path/to/checkpoint/sglang/validate.py \
-  --model-path /path/to/checkpoint --output-dir /path/to/results
+python /opt/valen-kit/example_client.py --protocol decisions
+python /opt/valen-kit/example_client.py --protocol systemone --image cat.jpg
 ```
-
-The harness runs the checkpoint's Transformers reference and plugin server in separate processes. It compares token counts, choices and probabilities for text/image requests, then runs concurrent requests. Its default absolute-probability tolerance is 0.02. Keep the full result files, runtime freeze, engine fingerprint report, checkpoint revision and hardware information. A new checkpoint or engine change needs new validation.
-
-## Build the kit from source
-
-The source lives in `Valen/serving/sglang`; it is a separate Python distribution from `valen`.
-
-```bash
-python -m pip install build
-python -m build --wheel /path/to/Valen/serving/sglang
-python /path/to/Valen/serving/sglang/build_kit.py \
-  /path/to/Valen/serving/sglang/dist/valen_sglang-<version>-py3-none-any.whl \
-  /path/to/exported-checkpoint/sglang
-```
-
-The destination must not exist. The builder copies the wheel, bilingual instructions, validation notes, scripts and license notices, and writes `SHA256SUMS`. It does not copy or upload model weights. The resulting `sglang/` directory can be published with the checkpoint after its tests pass.
-
-The engine source lock is intentional. Updating it means reviewing hook APIs and behavior, rebuilding the wheel, and repeating CPU/GPU checks; editing hashes alone does not establish compatibility.

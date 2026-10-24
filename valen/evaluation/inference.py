@@ -15,7 +15,8 @@ def answer(question, logits, temperature=1.0):
         raise ValueError("Calibration temperature must be finite and positive")
     if logits.ndim != 1 or len(logits) != len(question.keys) or not torch.isfinite(logits).all():
         raise ValueError("Expected one finite logit per candidate")
-    probs = (logits.float() / temperature).softmax(-1).detach().cpu().tolist()
+    scores = logits.double()
+    probs = ((scores - scores.max()) / temperature).softmax(-1).detach().cpu().tolist()
     total = sum(probs)
     probs = [p / total for p in probs]
     result = {"type": question.kind}

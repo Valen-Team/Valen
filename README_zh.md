@@ -197,9 +197,7 @@ print(answer["probability"])  # 条件成立的概率，范围 0–1
 
 #### 免费额度与更高额度
 
-支持 `valen-preview-0923`、`valen-0-8b`、`valen-2b`、`valen-4b`。免费入口每次接受一个 `name: "q0"` 的问题，选择题与评分各支持 2–8 个选项或档位，`temperature` 固定为 `1.0`。文本最多 4000 字符，指令最多 1000 字符，每项描述最多 300 字符，请求体不超过 4,500,000 字节。免费服务有频率与容量限制，HTTP 429 时请稍后重试，避免并发批量调用。
-
-示例的 `Origin` 是免费代理要求的请求头，不是身份凭据；目前不开放其他网站的浏览器跨域调用。图片通过内联 data URL 发送；官网的视频体验先在本地提取中间帧，再作为图片发送。单帧不能判断运动或事件顺序。完整示例与限制见 [API 文档](https://valen-team.github.io/zh-Hans/docs/valen/api/)。
+通过[模型列表](https://valen-team.github.io/zh-Hans/docs/valen/api/list-models/)选择模型 ID。请求格式与图片示例见 [API 文档](https://valen-team.github.io/zh-Hans/docs/valen/api/)。
 
 需要批量调用或更高额度，请邮件联系 [liuziyu77@sjtu.edu.cn](mailto:liuziyu77@sjtu.edu.cn)，说明用途与预计调用量。获批后使用官方接口和自己的 Key：
 
@@ -211,29 +209,39 @@ headers = {"Authorization": "Bearer " + os.environ["VALEN_API_KEY"]}
 # 在上面的 requests.post 中替换 URL 和 headers，其余结构保持一致。
 ```
 
-Key 只保存在服务端环境变量中。托管 API 使用 `input`、问题列表、`choices` / `levels` 和 `predicate`；本地模型使用 `state`、问题映射、`criteria` 和 `noul`，两种请求格式不能混用。
+Key 只保存在服务端环境变量中。
 
 ### 2. 本地推理
 
 #### SGLang 镜像
 
-使用预构建镜像启动服务，需要 NVIDIA GPU、兼容 CUDA 13 的驱动和 NVIDIA Container Toolkit：
+需要 Linux x86-64、支持 FA3 的 NVIDIA GPU（如 H100、H200）、兼容的 CUDA 驱动，以及安装 Buildx 和 NVIDIA Container Toolkit 的 Docker。在 Valen 仓库根目录构建镜像并启动：
 
 ```bash
-docker pull ghcr.io/valen-team/sglang:valen-v0.1.0
+docker buildx build --platform linux/amd64 --load \
+  -t valen-sglang:0.1.0-dev3 \
+  -f serving/sglang/docker/Dockerfile .
 docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:30000:30000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
-  ghcr.io/valen-team/sglang:valen-v0.1.0 \
+  valen-sglang:0.1.0-dev3 \
   --model-path Valen-Team/Valen-2B --served-model-name valen \
   --host 0.0.0.0 --port 30000
 ```
 
 #### SGLang 插件
 
-已有兼容的官方 SGLang 环境时，可安装 `valen-sglang` wheel。当前需[从源码构建部署包](serving/sglang/README_zh.md)，引擎版本与依赖要求见该说明。
+已有兼容的官方 SGLang 环境时，可安装 `valen-sglang` wheel。完整步骤见[插件部署说明](serving/sglang/README_zh.md)。
 
-两种方式均提供 `/v1/systemone`，支持单 GPU 文本/图片 choice、noul、score 决策。服务就绪后发送请求：
+两种部署方式均通过 Valen 原生决策头提供 `/v1/systemone` 和 `/v1/decisions`，支持单 GPU 的文本、图片判断、选择与评分。服务就绪后发送请求：
+
+```bash
+curl http://localhost:30000/v1/decisions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"valen","input":"A cat is on the sofa.","questions":[{"name":"on_sofa","type":"predicate","instructions":"The cat is on the sofa."}]}'
+```
+
+选择 SystemOne 协议时，同一问题写为：
 
 ```bash
 curl http://localhost:30000/v1/systemone \
@@ -241,31 +249,40 @@ curl http://localhost:30000/v1/systemone \
   -d '{"model":"valen","state":"A cat is on the sofa.","questions":{"on_sofa":{"type":"noul","instructions":"The cat is on the sofa."}}}'
 ```
 
+
 详细步骤：[镜像部署](https://valen-team.github.io/zh-Hans/docs/valen/sglang-image/) · [插件部署](https://valen-team.github.io/zh-Hans/docs/valen/sglang-plugin/)。
 
 #### vLLM 镜像
 
-使用预构建镜像启动服务，需要 NVIDIA GPU、兼容 CUDA 13 的驱动和 NVIDIA Container Toolkit：
+Linux x86-64、NVIDIA GPU、兼容的 CUDA 驱动，以及安装 Buildx 和 NVIDIA Container Toolkit 的 Docker。在仓库根目录构建镜像：
 
 ```bash
-docker pull ghcr.io/valen-team/vllm:valen-v0.1.0
+docker buildx build --platform linux/amd64 --load \
+  -t valen-vllm:0.1.0-dev2 \
+  -f serving/vllm/docker/Dockerfile .
+```
+
+```bash
 docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:8000:8000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
-  ghcr.io/valen-team/vllm:valen-v0.1.0 \
-  --model-path Valen-Team/Valen-2B --served-model-name valen
+  valen-vllm:0.1.0-dev2 \
+  --model-path Valen-Team/Valen-2B \
+  --served-model-name valen \
+  --host 0.0.0.0 --port 8000
 ```
 
 #### vLLM 插件
 
-在[指定版本的 vLLM 环境](serving/vllm/README_zh.md)中安装 `valen-vllm` 插件，再启动服务：
+在[vLLM 环境](serving/vllm/README_zh.md)中安装插件并启动服务：
 
 ```bash
-MODEL=/path/to/Valen-2B CUDA_VISIBLE_DEVICES=0 bash /path/to/vllm-kit/serve.sh
-python /path/to/vllm-kit/example_client.py
+bash /absolute/path/to/serving-kit/vllm/install.sh
+MODEL=/absolute/path/to/Valen-2B MODEL_NAME=valen CUDA_VISIBLE_DEVICES=0 \
+  bash /absolute/path/to/serving-kit/vllm/serve.sh
 ```
 
-默认地址为 `127.0.0.1:8000`，文本/图片请求使用与 SGLang 相同的 `/v1/systemone` 格式。
+服务地址为 `127.0.0.1:8000`，支持 `/v1/systemone` 和 `/v1/decisions`。完整步骤：[镜像部署](https://valen-team.github.io/zh-Hans/docs/valen/vllm-image/) · [插件部署](https://valen-team.github.io/zh-Hans/docs/valen/vllm-plugin/)。
 
 #### Transformers
 

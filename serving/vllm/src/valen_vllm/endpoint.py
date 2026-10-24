@@ -11,6 +11,7 @@ from PIL import Image
 
 from valen_vllm.answers import answers
 from valen_vllm.compiler import encode_valen, valen_messages
+from valen_vllm.decisions import to_internal, to_public
 from valen_vllm.protocol import SystemOneRequest
 
 
@@ -47,16 +48,26 @@ class ValenEndpointPlugin:
                 raise HTTPException(503, "Valen engine is not ready")
             return await handler(body, raw_request)
 
+        @app.post("/v1/decisions")
+        async def decisions(body: dict, raw_request: Request):
+            try:
+                internal = SystemOneRequest.model_validate(
+                    {**to_internal(body), "temperature": body.get("temperature", 1.0)}
+                )
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(400, str(exc)) from exc
+            handler = getattr(raw_request.app.state, "valen_handler", None)
+            if handler is None:
+                raise HTTPException(503, "Valen engine is not ready")
+            response = await handler(internal, raw_request)
+            return to_public(body, response)
+
     async def init_state(self, engine_client, state, args):
-        if engine_client is None:
-            raise RuntimeError("Valen requires an engine")
         from transformers import AutoTokenizer
         from vllm.exceptions import VLLMClientError
         from vllm.pooling_params import PoolingParams
 
         config = engine_client.model_config
-        if config.hf_config.model_type != "valen_qwen":
-            raise RuntimeError("Enable this endpoint only on a Valen checkpoint")
         tokenizer = AutoTokenizer.from_pretrained(
             config.tokenizer,
             revision=config.tokenizer_revision,
@@ -109,7 +120,7 @@ class ValenEndpointPlugin:
                 "object": "structured_decision",
                 "created": int(time.time()),
                 "model": body.model,
-                "answers": answers(body, final.outputs.data.tolist()),
+                "answers": answers(body, final.outputs.data.tolist(), body.temperature),
                 "usage": {
                     "input_tokens": len(final.prompt_token_ids),
                     "output_tokens": 0,

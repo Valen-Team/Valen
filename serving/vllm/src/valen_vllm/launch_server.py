@@ -1,4 +1,4 @@
-"""Launch the constrained, pinned native vLLM pooling server."""
+"""Launch native vLLM pooling with the Valen plugin."""
 
 import argparse
 import os
@@ -16,9 +16,7 @@ def main():
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.65)
     args = parser.parse_args()
     plugins = os.environ.get("VLLM_PLUGINS", "valen").split(",")
-    if "valen" not in plugins:
-        parser.error("VLLM_PLUGINS must include valen")
-    os.environ["VLLM_PLUGINS"] = ",".join(plugins)
+    os.environ["VLLM_PLUGINS"] = ",".join(dict.fromkeys([*plugins, "valen"]))
     os.environ["VLLM_USE_V2_MODEL_RUNNER"] = "0"
     from valen_vllm import register
 

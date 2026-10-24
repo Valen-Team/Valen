@@ -1,7 +1,6 @@
-"""Bundle a built plugin wheel with checkpoint-side scripts and SHA256 sums."""
+"""Bundle a plugin wheel with its client, server scripts, and documentation."""
 
 import argparse
-import hashlib
 import shutil
 from pathlib import Path
 
@@ -16,22 +15,12 @@ args.output.mkdir(parents=True, exist_ok=False)
 for name in [
     "README.md",
     "README_zh.md",
-    "VALIDATION.md",
-    "validation.json",
     "LICENSE",
     "NOTICE",
     "install.sh",
     "serve.sh",
     "example_client.py",
-    "validate.py",
-    "runtime-requirements.txt",
 ]:
     shutil.copy2(root / name, args.output / name)
 shutil.copy2(args.wheel, args.output / args.wheel.name)
-lines = [
-    f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}"
-    for path in sorted(args.output.iterdir())
-    if path.is_file()
-]
-(args.output / "SHA256SUMS").write_text("\n".join(lines) + "\n")
 print(args.output.resolve())

@@ -8,6 +8,7 @@ from .heads import build_head
 from .runtime_model import ValenQwen
 from .compiler import Compiler
 from .responses import answer
+from .decisions import to_internal, to_public, local_images
 # List transitive files explicitly for Transformers' local dynamic loader.
 # 本地动态加载需要显式列出间接依赖，否则搬移后可能缺少这些模块。
 from .batching import collate_branches
@@ -81,11 +82,17 @@ class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
         self.eval()
         # Only request content reaches the compiler. / 只编译输入，不读取标签。
         request = request["request"] if "request" in request else request
+        public_request = request if "input" in request else None
+        if public_request is not None:
+            request = to_internal(public_request)
+            temperature = public_request.get("temperature", temperature)
         compiler = self.make_compiler(media_root, execution, processor)
-        state = compiler.compile({"request": request})
-        logits = self.forward_state(state) if state.inputs is not None else [self(q) for q in state.questions]
+        with local_images(request) as prepared:
+            state = compiler.compile({"request": prepared})
+            logits = self.forward_state(state) if state.inputs is not None else [self(q) for q in state.questions]
         answers = {q.qid: answer(q, z, temperature[q.kind] if isinstance(temperature, dict) else temperature)
                    for q, z in zip(state.questions, logits)}
-        return {"model": self.model_name, "answers": answers,
+        response = {"model": self.model_name, "answers": answers,
                 "usage": {"input_tokens": state.logical_tokens, "output_tokens": 0},
                 "internal_usage": {"compute_tokens": state.compute_tokens}}
+        return to_public(public_request, response) if public_request is not None else response

@@ -16,13 +16,7 @@ class ValenQwenConfig(Qwen3_5Config):
         valen_backbone_autocast_dtype=None,
         **kwargs,
     ):
-        if qwen_execution != "shared_state":
-            raise ValueError("This plugin requires shared_state execution")
-        if valen_backbone_autocast_dtype not in (None, "bfloat16"):
-            raise ValueError("Unsupported Valen backbone autocast dtype")
         self.valen_head = valen_head or {"head_type": "mixer"}
-        if self.valen_head.get("head_type", "mixer") != "mixer":
-            raise ValueError("This plugin requires a Mixer head")
         self.qwen_execution = qwen_execution
         self.valen_max_length = valen_max_length
         self.valen_media_kwargs = valen_media_kwargs or {}

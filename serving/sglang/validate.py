@@ -80,6 +80,11 @@ def cases(output):
                 "type": "noul",
                 "instructions": "Is there a square in the image?",
             },
+            "redness": {
+                "type": "score",
+                "instructions": "How red is the main shape?",
+                "criteria": ["Not red", "Partly red", "Fully red"],
+            },
         },
     }
     dialogue = {
@@ -107,6 +112,99 @@ def cases(output):
         "Previous order notes: the first order was delivered successfully. " * 120
     ) + text["state"]
     return [text, dialogue, many_levels, long_text, visual]
+
+
+def decisions_request(request):
+    """Express a SystemOne parity fixture using the public Decisions schema."""
+    state = copy.deepcopy(request["state"])
+    if isinstance(state, dict):
+        state = state["messages"]
+        for message in state:
+            if not isinstance(message["content"], list):
+                continue
+            for part in message["content"]:
+                if part["type"] == "text":
+                    part["type"] = "input_text"
+                else:
+                    part["type"] = "input_image"
+                    part["image_url"] = part["image_url"]["url"]
+    questions = []
+    for name, q in request["questions"].items():
+        question = {
+            "name": name,
+            "type": "predicate" if q["type"] == "noul" else q["type"],
+            "instructions": q["instructions"],
+        }
+        if q["type"] == "choice":
+            question["choices"] = [
+                {"value": value, "description": text}
+                for value, text in q["criteria"].items()
+            ]
+        elif q["type"] == "score":
+            question["levels"] = [
+                {"label": str(i), "description": text}
+                for i, text in enumerate(q["criteria"])
+            ]
+        questions.append(question)
+    return {
+        "input": state,
+        "questions": questions,
+        "temperature": request.get("temperature", 1.0),
+    }
+
+
+def systemone_response(response):
+    """Normalize a Decisions result for the existing HF comparison code."""
+    result = dict(response)
+    answers = {}
+    for answer in response["answers"]:
+        kind = answer["type"]
+        entry = {"type": "noul" if kind == "predicate" else kind}
+        if kind == "predicate":
+            entry["noul"] = answer["probability"]
+        else:
+            entry["probabilities"] = {
+                str(p["value"]): p["probability"] for p in answer["probabilities"]
+            }
+            entry[kind] = answer[kind]
+            entry["confidence"] = answer["confidence"]
+            if kind == "score":
+                entry["legend"] = {
+                    str(p["value"]): p["label"] for p in answer["probabilities"]
+                }
+        answers[answer["name"]] = entry
+    result["answers"] = answers
+    return result
+
+
+def protocol_difference(expected, actual):
+    """Check types, identities, distributions and non-probability readouts."""
+    if list(expected["answers"]) != list(actual["answers"]):
+        raise ValueError("Protocol question order/identity differs")
+    if expected["usage"] != actual["usage"]:
+        raise ValueError("Protocol token counts differ")
+    errors = []
+    for key, ref in expected["answers"].items():
+        got = actual["answers"][key]
+        if ref["type"] != got["type"]:
+            raise ValueError("Protocol question types differ")
+        if ref["type"] == "noul":
+            errors.append(abs(ref["noul"] - got["noul"]))
+        else:
+            if list(ref["probabilities"]) != list(got["probabilities"]):
+                raise ValueError("Protocol candidate identities/order differ")
+            errors.extend(
+                abs(p - got["probabilities"][k])
+                for k, p in ref["probabilities"].items()
+            )
+            errors.append(abs(ref["confidence"] - got["confidence"]))
+            if ref["type"] == "choice" and ref["choice"] != got["choice"]:
+                raise ValueError("Protocol selected choices differ")
+            if ref["type"] == "score":
+                errors.append(abs(ref["score"] - got["score"]))
+    if not all(math.isfinite(e) for e in errors):
+        raise ValueError("Non-finite protocol result")
+    return max(errors, default=0.0)
 
 
 def reference(args, requests):
@@ -153,6 +251,8 @@ def native(args, requests):
         "valen_sglang.launch_server",
         "--model-path",
         args.model_path,
+        "--served-model-name",
+        "valen",
         "--host",
         "127.0.0.1",
         "--port",
@@ -172,13 +272,17 @@ def native(args, requests):
         command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
     )
 
-    def score(request):
+    def score(request, protocol="systemone"):
         start = time.perf_counter()
+        body = request if protocol == "systemone" else decisions_request(request)
         response = http.post(
-            url + "/v1/systemone", json={"model": "valen", **request}, timeout=180
+            url + "/v1/" + protocol, json={"model": "valen", **body}, timeout=180
         )
         response.raise_for_status()
-        return response.json(), time.perf_counter() - start
+        result = response.json()
+        return (
+            result if protocol == "systemone" else systemone_response(result)
+        ), time.perf_counter() - start
 
     try:
         deadline = time.monotonic() + 600
@@ -202,17 +306,85 @@ def native(args, requests):
             runs = [score(request) for _ in range(args.repeats)]
             answers.append(runs[-1][0])
             timings.append(statistics.median(t for _, t in runs))
+        decisions_answers = [score(request, "decisions")[0] for request in requests]
+        protocol_errors = [
+            protocol_difference(a, b) for a, b in zip(answers, decisions_answers)
+        ]
+        # Temperature must affect logits in both protocols, not just be accepted.
+        temperatures = []
+        for temperature in (0.5, 2.0):
+            request = dict(requests[0], temperature=temperature)
+            left, right = score(request)[0], score(request, "decisions")[0]
+            temperatures.append(
+                {
+                    "temperature": temperature,
+                    "difference": protocol_difference(left, right),
+                    "answers": left["answers"],
+                }
+            )
+        if temperatures[0]["answers"] == temperatures[1]["answers"]:
+            raise ValueError("Temperature did not change the model distribution")
+        # Typed values and score labels must survive the Decisions boundary.
+        typed = decisions_request(requests[0])
+        typed["questions"][0]["choices"] = [
+            {"value": True, "description": "Payments and refunds"},
+            {"value": False, "description": "Technical support"},
+        ]
+        typed["questions"][2]["levels"] = [
+            {"label": label, "description": text}
+            for label, text in zip(
+                ["low", "medium", "high"],
+                requests[0]["questions"]["severity"]["criteria"],
+            )
+        ]
+        response = http.post(
+            url + "/v1/decisions", json={"model": "valen", **typed}, timeout=180
+        )
+        response.raise_for_status()
+        typed_answer = response.json()
+        if not isinstance(typed_answer["answers"][0]["choice"], bool):
+            raise ValueError("Boolean choice value was lost")
+        if [p["label"] for p in typed_answer["answers"][2]["probabilities"]] != [
+            "low",
+            "medium",
+            "high",
+        ]:
+            raise ValueError("Score labels were lost")
+        invalid = []
+        for route, body in [
+            ("decisions", {"model": "missing", **decisions_request(requests[0])}),
+            ("systemone", {"model": "missing", **requests[0]}),
+            (
+                "decisions",
+                {"model": "valen", **decisions_request(requests[0]), "temperature": 0},
+            ),
+        ]:
+            response = http.post(url + "/v1/" + route, json=body, timeout=30)
+            if response.status_code < 400 or response.status_code >= 500:
+                raise ValueError(
+                    f"Invalid {route} request returned {response.status_code}: {response.text[:400]}"
+                )
+            invalid.append({"route": route, "status": response.status_code})
         concurrent_requests = [
-            copy.deepcopy(requests[i % len(requests)]) for i in range(20)
+            (
+                copy.deepcopy(requests[i % len(requests)]),
+                "systemone" if i % 2 == 0 else "decisions",
+            )
+            for i in range(20)
         ]
         start = time.perf_counter()
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            batch = list(pool.map(score, concurrent_requests))
+            batch = list(pool.map(lambda pair: score(*pair), concurrent_requests))
         elapsed = time.perf_counter() - start
         result = {
             "answers": answers,
             "median_seconds": timings,
             "concurrent_answers": [a for a, _ in batch],
+            "decisions_answers": decisions_answers,
+            "protocol_errors": protocol_errors,
+            "temperature_cases": temperatures,
+            "typed_answer": typed_answer,
+            "invalid_requests": invalid,
             "concurrent_seconds": elapsed,
             "concurrent_requests_per_second": len(batch) / elapsed,
         }
@@ -299,8 +471,14 @@ def compare(args):
                 ]
             )
             batch_error = max(batch_error, *values)
+    protocol_error = max(
+        native["protocol_errors"]
+        + [c["difference"] for c in native["temperature_cases"]]
+    )
     result = {
         "cases": rows,
+        "protocol_max_error": protocol_error,
+        "both_protocols_validated": True,
         "tokens_match": tokens_match,
         "choices_match": choices_match,
         "max_probability_error": max_error,
@@ -309,7 +487,8 @@ def compare(args):
         "tolerance": args.tolerance,
         "passed": tokens_match
         and choices_match
-        and max(max_error, batch_error) <= args.tolerance,
+        and max(max_error, batch_error) <= args.tolerance
+        and protocol_error <= args.protocol_tolerance,
     }
     (args.output_dir / "comparison.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2), flush=True)
@@ -327,6 +506,7 @@ def main():
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--port", type=int, default=31000)
     parser.add_argument("--tolerance", type=float, default=0.02)
+    parser.add_argument("--protocol-tolerance", type=float, default=1e-6)
     args = parser.parse_args()
     args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -349,6 +529,8 @@ def main():
                     str(args.port),
                     "--tolerance",
                     str(args.tolerance),
+                    "--protocol-tolerance",
+                    str(args.protocol_tolerance),
                 ],
                 check=True,
             )

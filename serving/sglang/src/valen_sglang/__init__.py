@@ -1,3 +1,3 @@
-"""Native Valen decisions for a pinned, unmodified SGLang runtime."""
+"""Native Valen decisions for SGLang."""
 
-__version__ = "0.1.0.dev2"
+__version__ = "0.1.0.dev3"

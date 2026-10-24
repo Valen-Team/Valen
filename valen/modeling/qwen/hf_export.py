@@ -45,6 +45,7 @@ def bundle_runtime(source, destination):
     for name in ("configuration_valen.py", "modeling_valen.py"):
         shutil.copyfile(templates / name, destination / name)
     files = {
+        "decisions.py": "valen/decisions.py",
         "heads.py": "valen/modeling/qwen/heads.py",
         "batching.py": "valen/modeling/qwen/batching.py",
         "runtime_model.py": "valen/modeling/qwen/model.py",

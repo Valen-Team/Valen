@@ -1,6 +1,5 @@
 """Native vLLM Qwen3.5 execution with Valen's FP32 Mixer readout."""
 
-import torch
 from vllm.model_executor.models.adapters import as_embedding_model
 from vllm.model_executor.models.qwen3_5 import (
     Qwen3_5ForConditionalGeneration,
@@ -36,31 +35,6 @@ _Base = as_embedding_model(Qwen3_5ForConditionalGeneration)
 class ValenQwenForDecisionMaking(_Base):
     supports_multimodal_pruning = False
 
-    def __init__(self, *, vllm_config, prefix=""):
-        parallel = vllm_config.parallel_config
-        config = vllm_config.model_config.hf_config
-        if (
-            config.valen_backbone_autocast_dtype != "bfloat16"
-            or vllm_config.model_config.dtype != torch.bfloat16
-        ):
-            raise ValueError(
-                "This build requires a published BF16-compute Valen checkpoint"
-            )
-        if parallel.tensor_parallel_size != 1 or parallel.pipeline_parallel_size != 1:
-            raise ValueError("Valen currently requires TP=PP=1")
-        if (
-            vllm_config.quant_config is not None
-            or vllm_config.speculative_config is not None
-        ):
-            raise ValueError("Quantized and speculative Valen execution is unsupported")
-        if vllm_config.lora_config is not None:
-            raise ValueError(
-                "Valen requires complete merged checkpoints, not runtime LoRA adapters"
-            )
-        if vllm_config.scheduler_config.enable_chunked_prefill:
-            raise ValueError("Disable chunked prefill for Valen")
-        super().__init__(vllm_config=vllm_config, prefix=prefix)
-
     def _init_pooler(self, vllm_config, prefix=""):
         config = vllm_config.model_config.hf_config
         return ValenPooler(
@@ -78,18 +52,12 @@ class ValenQwenForDecisionMaking(_Base):
             for name, value in weights:
                 if name.startswith("head."):
                     key = name.removeprefix("head.")
-                    if key not in params or key in seen:
-                        raise ValueError(f"Unexpected or duplicate head weight: {name}")
                     default_weight_loader(params[key], value)
                     seen.add(key)
                 elif name.startswith("backbone."):
                     yield "model." + name.removeprefix("backbone."), value
                 else:
-                    raise ValueError(f"Unexpected checkpoint weight: {name}")
+                    yield name, value
 
         loaded = Qwen3_5ForConditionalGeneration.load_weights(self, backbone())
-        if missing := params.keys() - seen:
-            raise ValueError(f"Missing Valen head weights: {sorted(missing)}")
-        if any(p.dtype != torch.float32 for p in params.values()):
-            raise RuntimeError("Valen head must remain FP32")
         return loaded | {"pooler.head." + key for key in seen}

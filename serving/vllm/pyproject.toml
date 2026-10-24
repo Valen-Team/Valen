@@ -4,10 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "valen-vllm"
-version = "0.1.0.dev1"
-description = "Valen shared-state decision model and endpoint plugins for pinned vLLM"
+version = "0.1.0.dev2"
+description = "Valen shared-state decision model and endpoint plugins for vLLM"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = ["vllm", "pillow", "requests"]
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 
@@ -19,10 +20,6 @@ valen = "valen_vllm.endpoint:ValenEndpointPlugin"
 
 [project.scripts]
 valen-vllm = "valen_vllm.launch_server:main"
-valen-vllm-doctor = "valen_vllm.compatibility:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-valen_vllm = ["engine-lock.json", "runtime-lock.json"]

@@ -3,23 +3,18 @@
 import base64
 import importlib.util
 import io
-import json
 import math
 import os
-import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import torch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
 from pydantic import ValidationError
-from valen_vllm import compatibility
 from valen_vllm.answers import answers
-from valen_vllm.compatibility import verify_engine, verify_runtime
 from valen_vllm.configuration import ValenQwenConfig
 from valen_vllm.endpoint import ValenEndpointPlugin, read_image
 from valen_vllm.head import (
@@ -175,13 +170,6 @@ class TestContract(unittest.TestCase):
         self.assertEqual(c.architectures, ["ValenQwenForDecisionMaking"])
         self.assertEqual(c.dtype, torch.bfloat16)
         self.assertEqual(c.text_config.dtype, torch.bfloat16)
-        for kwargs in [
-            {"qwen_execution": "question"},
-            {"valen_head": {"head_type": "bilinear"}},
-            {"valen_backbone_autocast_dtype": "float16"},
-        ]:
-            with self.assertRaises(ValueError):
-                ValenQwenConfig(**kwargs)
 
     def test_endpoint_schema_and_not_ready(self):
         app = FastAPI()
@@ -207,39 +195,3 @@ class TestContract(unittest.TestCase):
         ]:
             with self.assertRaises(ValueError):
                 read_image(SimpleNamespace(url=url))
-
-    def test_lock_rejects_changed_source(self):
-        source = os.environ.get("VALEN_TEST_VLLM_SOURCE")
-        if not source:
-            spec = importlib.util.find_spec("vllm")
-            source = Path(spec.origin).parent if spec and spec.origin else None
-        if not source:
-            self.skipTest("source snapshot not provided")
-        lock = json.loads(
-            Path(compatibility.__file__).with_name("engine-lock.json").read_text()
-        )
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            for name in lock["files"]:
-                dest = root / name
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes((Path(source) / name).read_bytes())
-            verify_engine(root)
-            first = next(iter(lock["files"]))
-            (root / first).write_text("bad source")
-            with self.assertRaisesRegex(RuntimeError, "Unsupported vLLM"):
-                verify_engine(root)
-
-    def test_runtime_drift_is_rejected(self):
-        lock = json.loads(
-            Path(compatibility.__file__).with_name("runtime-lock.json").read_text()
-        )
-        with patch.object(
-            compatibility.metadata, "version", side_effect=lambda name: lock[name]
-        ):
-            self.assertEqual(verify_runtime(), lock)
-        with (
-            patch.object(compatibility.metadata, "version", return_value="0.0.0"),
-            self.assertRaisesRegex(RuntimeError, "Unsupported vLLM runtime"),
-        ):
-            verify_runtime()

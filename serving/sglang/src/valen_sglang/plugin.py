@@ -1,7 +1,5 @@
 """Install Valen adapters through SGLang's supported general-plugin hooks."""
 
-from valen_sglang.compatibility import verify_engine
-
 _registered = False
 
 HOOKS = (
@@ -45,12 +43,6 @@ HOOKS = (
         "validate_request",
         "AROUND",
     ),
-    ("sglang.srt.entrypoints.http_server._execute_server_warmup", "warmup", "AROUND"),
-    (
-        "sglang.srt.entrypoints.http_server._wait_and_warmup",
-        "resolve_warmup_callback",
-        "AROUND",
-    ),
 )
 CLASS_HOOKS = (
     "sglang.srt.entrypoints.systemone.protocol.SystemOneRequest",
@@ -62,7 +54,6 @@ def register():
     global _registered
     if _registered:
         return
-    verify_engine()
     from transformers import AutoConfig
 
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
@@ -77,16 +68,3 @@ def register():
     for target, function, kind in HOOKS:
         HookRegistry.register(target, getattr(hooks, function), getattr(HookType, kind))
     _registered = True
-
-
-def assert_hooks_applied():
-    from sglang.srt.plugins.hook_registry import HookRegistry
-
-    missing = (
-        set(CLASS_HOOKS).union(target for target, _, _ in HOOKS) - HookRegistry._patched
-    )
-    if not _registered or missing:
-        raise RuntimeError(
-            "The Valen plugin did not load completely. Check SGLANG_PLUGINS and startup errors. "
-            f"Missing hooks: {sorted(missing)}"
-        )

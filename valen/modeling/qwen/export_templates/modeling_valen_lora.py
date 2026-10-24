@@ -15,6 +15,7 @@ from .heads import build_head
 from .compiler import Compiler
 from .runtime_model import ValenQwen
 from .responses import answer
+from .decisions import to_internal, to_public, local_images
 from .batching import collate_branches
 from .schema import candidates
 from .data_types import QuestionSpec

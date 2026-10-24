@@ -54,7 +54,7 @@ def export_adapters(checkpoint, merged_model, work, validation_data, device="cud
     # These runtime and processor files are already validated with this checkpoint.
     # 复用已验证的运行代码和 processor，保留训练版本支持的 Score 范围。
     for name in ("configuration_valen.py", "modeling_valen.py", "heads.py", "compiler.py", "runtime_model.py",
-                 "responses.py", "batching.py", "schema.py", "data_types.py", "tokenizer.json",
+                 "responses.py", "decisions.py", "batching.py", "schema.py", "data_types.py", "tokenizer.json",
                  "tokenizer_config.json", "processor_config.json", "chat_template.jinja", "LICENSE"):
         shutil.copyfile(merged_model / name, stage / name)
     shutil.copyfile(Path(__file__).parent / "export_templates/modeling_valen_lora.py", stage / "modeling_valen_lora.py")

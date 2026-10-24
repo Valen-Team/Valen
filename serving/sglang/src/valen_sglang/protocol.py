@@ -2,7 +2,7 @@
 
 from typing import Annotated, Union
 
-from pydantic import Field
+from pydantic import Field, ValidationInfo, field_validator
 
 from sglang.srt.entrypoints.openai.protocol import RequiredDecisionText
 from sglang.srt.entrypoints.systemone.protocol import (
@@ -29,3 +29,14 @@ Question = Annotated[
 
 class SystemOneRequest(StockSystemOneRequest):
     questions: dict[str, Question] = Field(min_length=1)
+    temperature: float = Field(default=1.0, gt=0, allow_inf_nan=False, strict=True)
+
+    @field_validator("temperature", "prompt_format_version", "return_prompt_token_ids")
+    @classmethod
+    def _refuse_decisions_fields(cls, value, info: ValidationInfo):
+        # Stock SystemOne refuses Decisions-only fields with this validator.
+        # Override the inherited validator for Valen's calibration extension,
+        # while continuing to reject the other unsupported extensions.
+        if info.field_name == "temperature":
+            return value
+        return super()._refuse_decisions_fields(value, info)

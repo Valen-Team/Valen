@@ -197,9 +197,7 @@ For a score, supply ordered levels:
 
 #### Free access and higher quotas
 
-Supported models: `valen-preview-0923`, `valen-0-8b`, `valen-2b`, and `valen-4b`. The free endpoint accepts one question named `q0`, 2–8 alternatives for choice or score, and `temperature: 1.0`. Text is limited to 4000 characters, instructions to 1000, each option description to 300, and request bodies to 4,500,000 bytes. Frequency and capacity limits apply; retry later on HTTP 429 and avoid concurrent batch workloads.
-
-The example's `Origin` header is required by the free proxy; it is not an access credential. Browser calls from other websites are not currently enabled. Images use inline data URLs. The web chat processes videos locally and sends their middle frame as an image; a single frame cannot establish motion or event order. See the [API reference](https://valen-team.github.io/docs/valen/api/) for full examples and limits.
+Use [List Models](https://valen-team.github.io/docs/valen/api/list-models/) to choose a model ID. Request formats and image examples are in the [API reference](https://valen-team.github.io/docs/valen/api/).
 
 For batch workloads or higher quotas, email [liuziyu77@sjtu.edu.cn](mailto:liuziyu77@sjtu.edu.cn) with your use case and expected volume. Once approved, use the official endpoint and your own key:
 
@@ -211,29 +209,39 @@ headers = {"Authorization": "Bearer " + os.environ["VALEN_API_KEY"]}
 # Replace the URL and headers in requests.post above; keep the same payload shape.
 ```
 
-Keep keys in server-side environment variables. The hosted API uses `input`, a question list, `choices` / `levels`, and `predicate`; the local model uses `state`, a question mapping, `criteria`, and `noul`. These request formats are distinct.
+Keep keys in server-side environment variables.
 
 ### 2. Local inference
 
 #### SGLang image
 
-Start the prebuilt image with an NVIDIA GPU, a CUDA 13-compatible driver, and NVIDIA Container Toolkit:
+Use Linux x86-64, an NVIDIA GPU supporting FA3 (such as H100 or H200), a compatible CUDA driver, and Docker with Buildx and NVIDIA Container Toolkit. Build and start the image from the Valen repository root:
 
 ```bash
-docker pull ghcr.io/valen-team/sglang:valen-v0.1.0
+docker buildx build --platform linux/amd64 --load \
+  -t valen-sglang:0.1.0-dev3 \
+  -f serving/sglang/docker/Dockerfile .
 docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:30000:30000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
-  ghcr.io/valen-team/sglang:valen-v0.1.0 \
+  valen-sglang:0.1.0-dev3 \
   --model-path Valen-Team/Valen-2B --served-model-name valen \
   --host 0.0.0.0 --port 30000
 ```
 
 #### SGLang plugin
 
-For a compatible official SGLang environment, install the `valen-sglang` wheel. Currently, [build the kit from source](serving/sglang/README.md); the instructions specify the required engine and dependencies.
+For a compatible official SGLang environment, install the `valen-sglang` wheel. See the [plugin deployment guide](serving/sglang/README.md).
 
-Both routes expose `/v1/systemone` for single-GPU text/image choice, noul, and score decisions. Once the server is ready:
+Both deployment options expose `/v1/systemone` and `/v1/decisions` through the same native Valen decision head. They support single-GPU text/image predicate, choice, and score questions. Once the server is ready:
+
+```bash
+curl http://localhost:30000/v1/decisions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"valen","input":"A cat is on the sofa.","questions":[{"name":"on_sofa","type":"predicate","instructions":"The cat is on the sofa."}]}'
+```
+
+To select SystemOne, express the same question as:
 
 ```bash
 curl http://localhost:30000/v1/systemone \
@@ -241,31 +249,40 @@ curl http://localhost:30000/v1/systemone \
   -d '{"model":"valen","state":"A cat is on the sofa.","questions":{"on_sofa":{"type":"noul","instructions":"The cat is on the sofa."}}}'
 ```
 
+
 Full instructions: [Image deployment](https://valen-team.github.io/docs/valen/sglang-image/) · [Plugin deployment](https://valen-team.github.io/docs/valen/sglang-plugin/).
 
 #### vLLM image
 
-Start the prebuilt image with an NVIDIA GPU, a CUDA 13-compatible driver, and NVIDIA Container Toolkit:
+Linux x86-64, an NVIDIA GPU, a compatible CUDA driver, and Docker with Buildx and NVIDIA Container Toolkit. Build the image from the repository root:
 
 ```bash
-docker pull ghcr.io/valen-team/vllm:valen-v0.1.0
+docker buildx build --platform linux/amd64 --load \
+  -t valen-vllm:0.1.0-dev2 \
+  -f serving/vllm/docker/Dockerfile .
+```
+
+```bash
 docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:8000:8000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
-  ghcr.io/valen-team/vllm:valen-v0.1.0 \
-  --model-path Valen-Team/Valen-2B --served-model-name valen
+  valen-vllm:0.1.0-dev2 \
+  --model-path Valen-Team/Valen-2B \
+  --served-model-name valen \
+  --host 0.0.0.0 --port 8000
 ```
 
 #### vLLM plugin
 
-Install the `valen-vllm` plugin in the [required vLLM environment](serving/vllm/README.md), then start the service:
+Install the plugin in the [vLLM environment](serving/vllm/README.md) and start the service:
 
 ```bash
-MODEL=/path/to/Valen-2B CUDA_VISIBLE_DEVICES=0 bash /path/to/vllm-kit/serve.sh
-python /path/to/vllm-kit/example_client.py
+bash /absolute/path/to/serving-kit/vllm/install.sh
+MODEL=/absolute/path/to/Valen-2B MODEL_NAME=valen CUDA_VISIBLE_DEVICES=0 \
+  bash /absolute/path/to/serving-kit/vllm/serve.sh
 ```
 
-The default address is `127.0.0.1:8000`. Text/image requests use the same `/v1/systemone` format as SGLang.
+The service listens at `127.0.0.1:8000` and supports `/v1/systemone` and `/v1/decisions`. Full instructions: [Image deployment](https://valen-team.github.io/docs/valen/vllm-image/) · [Plugin deployment](https://valen-team.github.io/docs/valen/vllm-plugin/).
 
 #### Transformers
 

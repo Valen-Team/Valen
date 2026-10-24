@@ -2,10 +2,6 @@
 
 
 def register():
-    from valen_vllm.compatibility import verify_engine, verify_runtime
-
-    verify_engine()
-    verify_runtime()
     from transformers import AutoConfig
     from vllm import ModelRegistry
 

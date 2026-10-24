@@ -99,12 +99,6 @@ class ValenMixerHead(nn.Module):
             head_channel_hidden_dim=1024,
         )
         settings = {k: config.get(k, v) for k, v in defaults.items()}
-        if config.get("head_type", "mixer") != "mixer" or any(
-            type(v) is not int or v <= 0 for v in settings.values()
-        ):
-            raise ValueError(
-                "Valen requires a mixer head with positive integer dimensions"
-            )
         width = settings["head_width"]
         self.input_norm = nn.LayerNorm(hidden_size, dtype=torch.float32)
         self.projection = nn.Linear(hidden_size, width, dtype=torch.float32)

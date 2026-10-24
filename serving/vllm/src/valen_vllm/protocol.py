@@ -39,3 +39,4 @@ class SystemOneRequest(BaseModel):
     state: str | dict
     questions: Annotated[dict[str, Question], Field(min_length=1, max_length=256)]
     images: list[Image] = Field(default_factory=list, max_length=16)
+    temperature: float = Field(default=1.0, gt=0, allow_inf_nan=False, strict=True)

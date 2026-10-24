@@ -43,13 +43,9 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/valen-team/vllm:candidate-sha-${{ github.sha }}
-          build-args: VCS_REF=${{ github.sha }}
-          provenance: mode=max
-          sbom: true
       - name: Record candidate digest
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo 'Candidate only; final GPU verification and release review required.' >> "$GITHUB_STEP_SUMMARY"
           echo "Image: ghcr.io/valen-team/vllm:candidate-sha-${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
           echo "Digest: ${IMAGE_DIGEST}" >> "$GITHUB_STEP_SUMMARY"

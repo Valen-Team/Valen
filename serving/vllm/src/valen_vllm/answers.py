@@ -5,7 +5,9 @@ import math
 from valen_vllm.compiler import valen_options
 
 
-def answers(request, logits):
+def answers(request, logits, temperature=1.0):
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("temperature must be finite and positive")
     expected = sum(len(valen_options(q)) for q in request.questions.values())
     if len(logits) != expected or not all(math.isfinite(v) for v in logits):
         raise RuntimeError("Expected finite logits for every Valen candidate")
@@ -15,7 +17,7 @@ def answers(request, logits):
         values = logits[offset : offset + len(options)]
         offset += len(options)
         top = max(values)
-        weights = [math.exp(v - top) for v in values]
+        weights = [math.exp((v - top) / temperature) for v in values]
         total = math.fsum(weights)
         probs = [v / total for v in weights]
         keys = [key for key, _ in options]
