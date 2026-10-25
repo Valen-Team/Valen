@@ -78,6 +78,22 @@ class TestDecisions(unittest.TestCase):
         self.assertFalse(path.exists())
         self.assertTrue(internal["state"]["messages"][0]["content"][1]["image_url"]["url"].startswith("data:"))
 
+    def test_hf_video_uses_the_existing_local_video_compiler(self):
+        body = dict(BODY, input=[{"role": "user", "content": [
+            {"type": "input_text", "text": "Watch this clip."},
+            {"type": "input_video", "video_url": "clip.mp4"},
+        ]}])
+        internal = to_internal(body, allow_video=True)
+        self.assertEqual(internal["state"]["messages"][0]["content"], [
+            {"type": "text", "text": "Watch this clip."},
+            {"type": "video_url", "video_url": {"url": "clip.mp4"}},
+        ])
+        with local_images(internal) as prepared:
+            self.assertEqual(prepared, internal)
+        with self.assertRaises(ValueError):
+            to_internal(body)
+        self.assertEqual(body["input"][0]["content"][1]["type"], "input_video")
+
     def test_deployment_copies_match(self):
         source = (ROOT / "valen/decisions.py").read_bytes()
         for engine in ("sglang", "vllm"):
@@ -134,6 +150,13 @@ class TestDecisions(unittest.TestCase):
         self.assertEqual(tiny["answers"][0]["probability"], 1.0)
         legacy = scope["predict"](model, to_internal(BODY))
         self.assertEqual(public, to_public(BODY, legacy))
+        for request in [BODY, to_internal(BODY)]:
+            keyword = scope["predict"](model, request, temperature=2)
+            field = scope["predict"](model, dict(request, temperature=2))
+            self.assertEqual(keyword, field)
+            overridden = scope["predict"](model, dict(request, temperature=1), temperature=2)
+            default = scope["predict"](model, request)
+            self.assertEqual(overridden, default)
 
     def test_example_clients_select_protocol_for_text_and_images(self):
         import contextlib

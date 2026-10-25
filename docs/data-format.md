@@ -2,7 +2,9 @@
 
 **English** · [简体中文](data-format_zh.md)
 
-Training, inference and evaluation all use UTF-8 JSONL: one JSON record per line, with blank lines ignored. The reader loads the whole file into memory at once, and an empty file raises an error. The examples below are expanded for readability; collapse each record onto a single line when writing `.jsonl`. Ready-to-use files are in [data/smoke](../data/smoke/).
+Training and evaluation datasets use UTF-8 JSONL: one JSON record per line, with blank lines ignored. The reader loads the whole file into memory at once, and an empty file raises an error. The examples below are expanded for readability; collapse each record onto a single line when writing `.jsonl`. Ready-to-use files are in [data/smoke](../data/smoke/).
+
+Inference accepts request objects directly: SystemOne uses `state` and a question mapping, while Decisions uses `input` and a question list. See [inference protocols](decisions.md), the [Transformers notebook](../cookbook/local_inference.ipynb) and [ONNX / SDKs](onnx.md). This page describes training and evaluation data files.
 
 ```json
 {
@@ -53,7 +55,7 @@ Every question needs a lowercase `type` and a non-empty string `instructions`. T
 | --- | --- | --- | --- |
 | `choice` | Mapping of 1–255 candidate names → non-empty descriptions | Candidate names; must cover all candidates | Training shuffles candidates together with their labels; inference keeps the input order |
 | `noul` | Not needed; if provided, it is not used to build candidates | `"true"`, `"false"` | Fixed, true first |
-| `score` | List of 2–10 non-empty grade descriptions | `"0"` to `"K-1"` | Keeps the list order, starting at 0 |
+| `score` | List of 2–255 non-empty grade descriptions | `"0"` to `"K-1"` | Keeps the list order, starting at 0 |
 
 Choice candidate names are also part of the input text; question IDs are not. In the default `question` mode, each Score branch only sees its own grade description; in `shared_state` mode, all grade descriptions appear in one sequence and every grade is scored in a single forward pass. In both modes the output value is computed from list indices, in the range `[0, K-1]`. If your application needs a 1–5 or 0–100 scale, convert on the caller side.
 

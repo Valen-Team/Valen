@@ -20,7 +20,11 @@
 </p>
 
 <p align="center">
-  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="cookbook/api_quickstart_zh.ipynb">Cookbook</a>
+  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ 文本集成</a>
+</p>
+
+<p align="center">
+  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="cookbook/api_quickstart_zh.ipynb">Cookbook</a>
 </p>
 
 <a id="简介"></a>
@@ -32,6 +36,8 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 <a id="news"></a>
 
 ## 最新动态
+
+- **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](docs/onnx_zh.md)。
 
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
 - **2026-10-18**：发布[JevalKit](https://github.com/Valen-Team/JevalKit)，一个面向 Jev 类决策模型的开源评测工具，提供统一的模型接口和已整理的评测数据。 [🤗 JevalKit 排行榜](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard)。
@@ -45,12 +51,12 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 模型与数据集
 
-| 模型 | 下载 |
-| --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) |
-| Valen-preview-0923（早期版本） | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) |
+| 模型 | 原生权重 / Transformers | ONNX Runtime |
+| --- | --- | --- |
+| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) |
+| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) |
+| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) |
+| Valen-preview-0923（早期版本） | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) 包含 Image 和 Video 两个子集，用于图像与视频决策评测。此前发布的 [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) 用于训练，[General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) 用于评测，[Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) 用于游戏训练与评测。
 
@@ -213,6 +219,14 @@ Key 只保存在服务端环境变量中。
 
 ### 2. 本地推理
 
+| 需求 | 推荐入口 |
+| --- | --- |
+| Python CPU / NVIDIA CUDA、Node.js 或浏览器应用 | [ONNX 与 SDK](docs/onnx_zh.md) |
+| 原生 PyTorch / Transformers 模型 | [Transformers](#transformers) |
+| GPU HTTP 服务 | [SGLang](serving/sglang/README_zh.md) · [vLLM](serving/vllm/README_zh.md) |
+| 原生 C++ 文本集成 | [C++ 仓库](https://github.com/Valen-Team/valen-sdk-cpp) |
+
+
 #### SGLang 镜像
 
 需要 Linux x86-64、支持 FA3 的 NVIDIA GPU（如 H100、H200）、兼容的 CUDA 驱动，以及安装 Buildx 和 NVIDIA Container Toolkit 的 Docker。在 Valen 仓库根目录构建镜像并启动：
@@ -286,30 +300,108 @@ MODEL=/absolute/path/to/Valen-2B MODEL_NAME=valen CUDA_VISIBLE_DEVICES=0 \
 
 #### Transformers
 
-先按[安装说明](scripts/README.md#installation)准备依赖；Hugging Face 仓库需要访问权限时，先运行 `hf auth login`。
+安装依赖并加载模型：
+
+```bash
+python -m pip install torch torchvision transformers pillow av
+```
 
 ```python
 import torch
 from transformers import AutoModel
 
-model = AutoModel.from_pretrained(
-    "Valen-Team/Valen-2B", trust_remote_code=True, dtype="auto",
-    attn_implementation="sdpa",
-).to("cuda").eval()
+model = (
+    AutoModel.from_pretrained(
+        "Valen-Team/Valen-2B",
+        trust_remote_code=True,
+        dtype="auto",
+        attn_implementation="sdpa",
+    )
+    .to("cuda")
+    .eval()
+)
 torch.set_float32_matmul_precision("highest")
 torch.backends.cudnn.allow_tf32 = False
 
-print(model.predict({
-    "state": "A cat is on the sofa.",
-    "questions": {
-        "animal": {"type": "choice", "instructions": "Which animal is present?",
-                   "criteria": {"cat": "A cat", "dog": "A dog"}},
-        "on_sofa": {"type": "noul", "instructions": "The cat is on the sofa."},
+answer = model.predict(
+    {
+        "state": "A cat is sitting on the sofa.",
+        "questions": {
+            "animal": {
+                "type": "choice",
+                "instructions": "Which animal is present?",
+                "criteria": {"cat": "A cat", "dog": "A dog"},
+            },
+            "on_sofa": {"type": "noul", "instructions": "The cat is on the sofa."},
+            "clarity": {
+                "type": "score",
+                "instructions": "How clear is the evidence?",
+                "criteria": ["Unclear", "Partly clear", "Clear"],
+            },
+        },
     },
-}, execution="shared_state"))
+    execution="shared_state",
+    temperature=1.0,
+)
+print(answer["answers"]["animal"]["choice"])
+print(answer["answers"]["animal"]["probabilities"])
+print(answer["answers"]["on_sofa"]["noul"])
+print(answer["answers"]["clarity"]["score"])
 ```
 
-逐题推理使用 `execution="question"`；安装 Flash Attention 后可设置 `attn_implementation="flash_attention_2"`。图片和视频输入见[数据格式](docs/data-format_zh.md)。
+使用同一个模型发送 Decisions 请求：
+
+```python
+answer = model.predict(
+    {
+        "input": "A cat is sitting on the sofa.",
+        "questions": [
+            {
+                "name": "on_sofa",
+                "type": "predicate",
+                "instructions": "The cat is on the sofa.",
+            }
+        ],
+    },
+    execution="shared_state",
+    temperature=1.0,
+)
+print(answer["answers"])
+```
+
+两种协议均支持文本、图片、视频和 `shared_state` / `question` 执行。完整示例见 [Transformers 推理](https://valen-team.github.io/zh-Hans/docs/valen/quickstart/)。
+
+首次加载会缓存原生模型权重；已有缓存后，在 `AutoModel.from_pretrained(...)` 中加入 `local_files_only=True` 可禁止下载，也可传入本地模型目录。这里使用原生 `Valen-*B` 权重，ONNX 模型通过下方 SDK 加载。
+
+<a id="onnx-sdk"></a>
+
+#### ONNX 与 SDK
+
+使用 ONNX Runtime 在自己的应用中推理，无需安装 PyTorch 或 Transformers。Python 支持 CPU / NVIDIA CUDA，JavaScript / TypeScript 支持 Node.js CPU 与浏览器 WebGPU；C++ 当前提供 SystemOne 文本 FP32 CPU 集成。
+
+本地 Python 推理需要 Python 3.11+ 和 Git；仅 HTTP 客户端支持 Python 3.10+。Python 首次加载会下载完整的所选变体，例如 0.8B FP32 约 3.505 GB；后续复用缓存，也可传入本地模型目录。
+
+```bash
+python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git"
+```
+
+```python
+from valen_sdk import Valen
+
+with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
+    result = client.decisions(
+        input="Please send my order to my new address.",
+        questions=[{"name": "change_address", "type": "predicate",
+                    "instructions": "Is the customer requesting a delivery address change?"}],
+    )
+    print(result.by_name("change_address").probability)
+```
+
+示例打印 0–1 的概率，值越大表示模型越认为客户在请求修改配送地址。
+
+`q8-mlp` 可降低下载体积与文本内存，CUDA 使用 `cuda-fp16`，0.8B 浏览器使用专用 `web-portable`。
+
+完整的图片/视频、SystemOne、CUDA、浏览器、本地 HTTP 服务与离线缓存示例见 [ONNX 与 SDK 指南](docs/onnx_zh.md)。[Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。自己导出检查点见 [模块化 ONNX 导出](scripts/export/qwen/README-onnx-v2_zh.md)。
 
 ### 3. 评估 VisualDecisionBench
 

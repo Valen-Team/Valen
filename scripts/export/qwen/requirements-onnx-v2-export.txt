@@ -1,0 +1,11 @@
+# Use a separate export environment; SDK inference does not need these frameworks.
+torch>=2.14.0,<2.15
+transformers==5.19.0
+huggingface-hub>=1.5,<2
+onnxruntime==1.31.0
+onnx==1.23.2
+onnx-ir==1.1.0
+onnxscript==0.7.2
+safetensors>=0.6
+numpy>=1.26
+Pillow>=10

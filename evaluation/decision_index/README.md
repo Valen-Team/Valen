@@ -70,6 +70,30 @@ Re-running the same command resumes the upstream results file and retries runtim
 errors. A quick pipeline check can add `--limit 10`; its partial score is not a
 complete benchmark result.
 
+## ONNX CPU evaluation
+
+Published ONNX models use `ValenONNXEngine` with the same upstream runner and scorers. Use Python 3.11+ and run from the Valen repository root. Inference runs through the standalone SDK without loading a PyTorch model. Use the frozen suite prepared and verified above.
+
+```bash
+python -m pip install \
+  "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git" \
+  "decision-index @ git+https://github.com/apolinario/decision-index.git@f5a6e4fd85fed05e77878dfc4966d0568bfb45ec"
+python -m evaluation.decision_index pipeline \
+  --edition 0.3 \
+  --suite-dir data/decision-index/suite-0.3 \
+  --engine evaluation.decision_index.onnx_engine:ValenONNXEngine \
+  --model Valen-Team/Valen-0.8B-ONNX \
+  --option variant=fp32 \
+  --option threads=4 \
+  --out output/decision-index/0.3/Valen-0.8B-ONNX-fp32 \
+  --compact
+```
+
+`--model` also accepts the 2B or 4B ONNX repository or a local model directory. Use `--option variant=q8-mlp` for CPU MLP quantization and `--option threads=4` to set CPU threads. Once fully cached, add `--option offline=true` to prevent downloads; `--option revision=<commit>` selects a model revision. Keep separate output directories for each model and variant.
+
+This adapter uses the native decision head and `shared_state`, retaining the upstream questions and candidate order without truncation. It is a CPU evaluation adapter; see [ONNX & SDKs](../../docs/onnx.md) for in-app CUDA, images/video and browser inference.
+
+
 ## Inputs, precision and outputs
 
 The adapter keeps every question ID, option and insertion order. Strings remain

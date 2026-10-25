@@ -67,6 +67,30 @@ python -m evaluation.decision_index pipeline \
 再次运行相同命令会按照上游机制续跑，并重试运行错误。
 可添加 `--limit 10` 快速验证流程，此时的部分分数不能作为完整 benchmark 结果。
 
+## ONNX CPU 评测
+
+已发布的 ONNX 模型通过 `ValenONNXEngine` 接入同一套上游 runner 和评分器。使用 Python 3.11+，在 Valen 仓库根目录运行；模型推理由独立 SDK 执行，无需加载 PyTorch 模型。测试集仍使用上方已准备、验证的冻结文件。
+
+```bash
+python -m pip install \
+  "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git" \
+  "decision-index @ git+https://github.com/apolinario/decision-index.git@f5a6e4fd85fed05e77878dfc4966d0568bfb45ec"
+python -m evaluation.decision_index pipeline \
+  --edition 0.3 \
+  --suite-dir data/decision-index/suite-0.3 \
+  --engine evaluation.decision_index.onnx_engine:ValenONNXEngine \
+  --model Valen-Team/Valen-0.8B-ONNX \
+  --option variant=fp32 \
+  --option threads=4 \
+  --out output/decision-index/0.3/Valen-0.8B-ONNX-fp32 \
+  --compact
+```
+
+`--model` 也可使用 2B、4B ONNX 仓库或本地模型目录。`--option variant=q8-mlp` 选择 CPU MLP 量化版本；`--option threads=4` 设置 CPU 线程数。已有完整缓存时，可加入 `--option offline=true` 禁止下载；`--option revision=<commit>` 固定模型版本。不同模型或变体应使用独立输出目录。
+
+本入口使用原生决策头与 `shared_state`，保留上游问题与候选顺序，不截断候选。它是 CPU 评测适配器；应用内 CUDA、图片/视频与浏览器推理见 [ONNX 与 SDK](../../docs/onnx_zh.md)。
+
+
 ## 输入、精度与输出
 
 保留全部问题 ID、选项及插入顺序。字符串保持原样；结构化 state、instructions 和

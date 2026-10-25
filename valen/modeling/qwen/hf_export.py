@@ -36,6 +36,14 @@ def log(event, **values):
     print(json.dumps({"event": event, **values}, ensure_ascii=False), flush=True)
 
 
+def bundle_responses(source, destination):
+    """Write the shared probability readout into a standalone HF package."""
+    path = Path(source) / "valen/evaluation/inference.py"
+    text = path.read_text(encoding="utf-8")
+    function = next(node for node in ast.parse(text).body if isinstance(node, ast.FunctionDef) and node.name == "answer")
+    (Path(destination) / "responses.py").write_text("import math\nimport torch\n\n" + ast.get_source_segment(text, function) + "\n", encoding="utf-8")
+
+
 def bundle_runtime(source, destination):
     """Freeze the compiler and decision readouts with the weights. / 打包训练时的输入及读出逻辑。"""
     source, destination = Path(source), Path(destination)
@@ -64,11 +72,8 @@ def bundle_runtime(source, destination):
             text = text.replace("from valen.data.types import", "from .data_types import")
         (destination / name).write_text(text, encoding="utf-8")
         hashes[relative] = sha_file(path)
-    path = source / "valen/evaluation/inference.py"
-    text = path.read_text(encoding="utf-8")
-    function = next(node for node in ast.parse(text).body if isinstance(node, ast.FunctionDef) and node.name == "answer")
-    (destination / "responses.py").write_text("import math\nimport torch\n\n" + ast.get_source_segment(text, function) + "\n", encoding="utf-8")
-    hashes["valen/evaluation/inference.py"] = sha_file(path)
+    bundle_responses(source, destination)
+    hashes["valen/evaluation/inference.py"] = sha_file(source / "valen/evaluation/inference.py")
     return hashes
 
 
@@ -292,7 +297,7 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
     dump(stage / "validation.json", validation)
     (stage / "MODEL_USAGE.md").write_text(f'''# {output.name}
 
-完整合并的 Qwen3.5 + 两层 Mixer，提供 Choice、Noul、Score 决策和 share_state 多题推理。
+完整合并的 Qwen3.5 + 两层 Mixer，提供 Choice、Noul、Score 决策和 shared_state 多题推理。
 Complete Qwen3.5 backbone with merged LoRA, trained visual merger, and the FP32 Mixer head.
 
 训练版本：1195k + JevBench 30k，两阶段 SFT，最终 step {complete["last_metric"]["step"]}。
@@ -300,7 +305,9 @@ Complete Qwen3.5 backbone with merged LoRA, trained visual merger, and the FP32 
 
 ## 加载 / Load
 
-验证环境：Python 3.10、PyTorch 2.6.0、Transformers 5.4.0、torchvision 0.21.0、Pillow、av 16.1.0。
+```bash
+python -m pip install torch torchvision transformers pillow av
+```
 使用 Flash Attention 2 时，另需与 PyTorch/CUDA 匹配的 flash-attn。
 
 ```python
@@ -330,7 +337,19 @@ response = model.predict({{
 print(response["answers"])
 ```
 
+同一个模型也接受 Decisions 请求：
+
+```python
+response = model.predict({{
+    "input": "There is one cat in the room.",
+    "questions": [{{"name": "is_cat", "type": "predicate",
+                   "instructions": "There is a cat in the room."}}],
+}}, temperature=1.0)
+print(response["answers"][0]["probability"])
+```
+
 图像/视频使用 Valen 的 messages、image_url、video_url 输入格式，媒体路径由 `media_root` 解析。
+Decisions 的媒体内容使用 input_image / image_url 和 input_video / video_url。
 默认 `execution="shared_state"`；`model.predict(..., execution="question")` 可使用独立问题路径。
 视频沿用训练配置，采样 16 帧。所有 Mixer 参数保持 FP32，基座权重为 BF16。
 

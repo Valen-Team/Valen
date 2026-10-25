@@ -20,7 +20,11 @@
 </p>
 
 <p align="center">
-  <a href="#introduction">Introduction</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="cookbook/api_quickstart.ipynb">Cookbook</a>
+  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ text integration</a>
+</p>
+
+<p align="center">
+  <a href="#introduction">Introduction</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="cookbook/api_quickstart.ipynb">Cookbook</a>
 </p>
 
 <a id="introduction"></a>
@@ -32,6 +36,8 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 <a id="news"></a>
 
 ## News
+
+- **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](docs/onnx.md).
 
 - **2026-10-21**: The [web chat](https://valen-team.github.io/) and [bilingual documentation](https://valen-team.github.io/docs/) are live, with a [free decision API](#api-usage) requiring no key.
 - **2026-10-18**: Released [JevalKit](https://github.com/Valen-Team/JevalKit), an open-source evaluation toolkit for Jev-like decision models, providing unified model interfaces and prepared evaluation datasets. The [🤗 JevalKit Leaderboard](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard).
@@ -45,12 +51,12 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## Models and datasets
 
-| Model | Download |
-| --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) |
-| Valen-preview-0923 (earlier release) | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) |
+| Model | Native weights / Transformers | ONNX Runtime |
+| --- | --- | --- |
+| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) |
+| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) |
+| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) |
+| Valen-preview-0923 (earlier release) | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) contains Image and Video subsets for visual decision evaluation. Earlier releases include [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) for training, [General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) for evaluation, and [Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) for game training and evaluation.
 
@@ -213,6 +219,14 @@ Keep keys in server-side environment variables.
 
 ### 2. Local inference
 
+| Goal | Starting point |
+| --- | --- |
+| Python CPU / NVIDIA CUDA, Node.js or browser applications | [ONNX & SDKs](docs/onnx.md) |
+| Native PyTorch / Transformers model | [Transformers](#transformers) |
+| GPU HTTP service | [SGLang](serving/sglang/README.md) · [vLLM](serving/vllm/README.md) |
+| Native C++ text integration | [C++ repository](https://github.com/Valen-Team/valen-sdk-cpp) |
+
+
 #### SGLang image
 
 Use Linux x86-64, an NVIDIA GPU supporting FA3 (such as H100 or H200), a compatible CUDA driver, and Docker with Buildx and NVIDIA Container Toolkit. Build and start the image from the Valen repository root:
@@ -286,30 +300,108 @@ The service listens at `127.0.0.1:8000` and supports `/v1/systemone` and `/v1/de
 
 #### Transformers
 
-[Install the dependencies](scripts/README.md#installation). Run `hf auth login` if the Hugging Face repositories require access.
+Install the dependencies and load a model:
+
+```bash
+python -m pip install torch torchvision transformers pillow av
+```
 
 ```python
 import torch
 from transformers import AutoModel
 
-model = AutoModel.from_pretrained(
-    "Valen-Team/Valen-2B", trust_remote_code=True, dtype="auto",
-    attn_implementation="sdpa",
-).to("cuda").eval()
+model = (
+    AutoModel.from_pretrained(
+        "Valen-Team/Valen-2B",
+        trust_remote_code=True,
+        dtype="auto",
+        attn_implementation="sdpa",
+    )
+    .to("cuda")
+    .eval()
+)
 torch.set_float32_matmul_precision("highest")
 torch.backends.cudnn.allow_tf32 = False
 
-print(model.predict({
-    "state": "A cat is on the sofa.",
-    "questions": {
-        "animal": {"type": "choice", "instructions": "Which animal is present?",
-                   "criteria": {"cat": "A cat", "dog": "A dog"}},
-        "on_sofa": {"type": "noul", "instructions": "The cat is on the sofa."},
+answer = model.predict(
+    {
+        "state": "A cat is sitting on the sofa.",
+        "questions": {
+            "animal": {
+                "type": "choice",
+                "instructions": "Which animal is present?",
+                "criteria": {"cat": "A cat", "dog": "A dog"},
+            },
+            "on_sofa": {"type": "noul", "instructions": "The cat is on the sofa."},
+            "clarity": {
+                "type": "score",
+                "instructions": "How clear is the evidence?",
+                "criteria": ["Unclear", "Partly clear", "Clear"],
+            },
+        },
     },
-}, execution="shared_state"))
+    execution="shared_state",
+    temperature=1.0,
+)
+print(answer["answers"]["animal"]["choice"])
+print(answer["answers"]["animal"]["probabilities"])
+print(answer["answers"]["on_sofa"]["noul"])
+print(answer["answers"]["clarity"]["score"])
 ```
 
-Use `execution="question"` for separate questions or `attn_implementation="flash_attention_2"` with Flash Attention installed. Image/video inputs follow the [data format](docs/data-format.md).
+Send a Decisions request to the same model:
+
+```python
+answer = model.predict(
+    {
+        "input": "A cat is sitting on the sofa.",
+        "questions": [
+            {
+                "name": "on_sofa",
+                "type": "predicate",
+                "instructions": "The cat is on the sofa.",
+            }
+        ],
+    },
+    execution="shared_state",
+    temperature=1.0,
+)
+print(answer["answers"])
+```
+
+Both protocols support text, images, video, and `shared_state` / `question` execution. See [Transformers inference](https://valen-team.github.io/docs/valen/quickstart/) for complete examples.
+
+The first load caches native model weights. Once cached, add `local_files_only=True` to `AutoModel.from_pretrained(...)` to prevent downloads, or pass a local model directory. Use native `Valen-*B` weights here; load ONNX models through the SDKs below.
+
+<a id="onnx-sdk"></a>
+
+#### ONNX and SDKs
+
+Run inference in your application with ONNX Runtime, without installing PyTorch or Transformers. Python supports CPU / NVIDIA CUDA, JavaScript / TypeScript supports Node.js CPU and browser WebGPU, and C++ currently provides a SystemOne text FP32 CPU integration.
+
+Local Python inference needs Python 3.11+ and Git; HTTP-only clients support Python 3.10+. Python downloads the full selected variant on first use, such as about 3.505 GB for 0.8B FP32, and reuses the cache on later runs. A local model directory also works.
+
+```bash
+python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git"
+```
+
+```python
+from valen_sdk import Valen
+
+with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
+    result = client.decisions(
+        input="Please send my order to my new address.",
+        questions=[{"name": "change_address", "type": "predicate",
+                    "instructions": "Is the customer requesting a delivery address change?"}],
+    )
+    print(result.by_name("change_address").probability)
+```
+
+The example prints a probability from 0 to 1; a higher value means the model is more confident that the customer is requesting a delivery address change.
+
+Use `q8-mlp` to reduce download size and text memory, `cuda-fp16` for CUDA, and the dedicated 0.8B `web-portable` variant for browsers.
+
+See the [ONNX & SDK guide](docs/onnx.md) for images/video, SystemOne, CUDA, browser inference, the local HTTP server and offline caching. [Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). To export your own checkpoint, use the [modular ONNX exporter](scripts/export/qwen/README-onnx-v2.md).
 
 ### 3. Evaluate VisualDecisionBench
 

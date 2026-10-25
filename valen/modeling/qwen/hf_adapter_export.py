@@ -10,7 +10,23 @@ import shutil
 
 import torch
 
-from .hf_export import compare_outputs, dump, evaluate_records, log, sha_file, sha_tensor, validation_records
+from .hf_export import bundle_responses, compare_outputs, dump, evaluate_records, log, sha_file, sha_tensor, validation_records
+
+
+def bundle_adapter_runtime(merged_model, stage):
+    """Keep checkpoint-specific internals and add the current public predict API."""
+    merged_model, stage = Path(merged_model), Path(stage)
+    stage.mkdir(parents=True, exist_ok=True)
+    for name in ("configuration_valen.py", "heads.py", "compiler.py", "runtime_model.py",
+                 "batching.py", "schema.py", "data_types.py", "tokenizer.json",
+                 "tokenizer_config.json", "processor_config.json", "chat_template.jinja", "LICENSE"):
+        shutil.copyfile(merged_model / name, stage / name)
+    templates = Path(__file__).parent / "export_templates"
+    for name in ("modeling_valen.py", "modeling_valen_lora.py"):
+        shutil.copyfile(templates / name, stage / name)
+    source = Path(__file__).resolve().parents[3]
+    shutil.copyfile(source / "valen/decisions.py", stage / "decisions.py")
+    bundle_responses(source, stage)
 
 
 def export_adapters(checkpoint, merged_model, work, validation_data, device="cuda:0", attention="flash_attention_2"):
@@ -51,13 +67,7 @@ def export_adapters(checkpoint, merged_model, work, validation_data, device="cud
     reference = evaluate_records(model, runtime.Compiler, processor, config, records)
     dump(work / "adapter_outputs.json", reference)
     dump(work / "validation_requests.json", [{"name":name,"record":record} for name,record in records])
-    # These runtime and processor files are already validated with this checkpoint.
-    # 复用已验证的运行代码和 processor，保留训练版本支持的 Score 范围。
-    for name in ("configuration_valen.py", "modeling_valen.py", "heads.py", "compiler.py", "runtime_model.py",
-                 "responses.py", "decisions.py", "batching.py", "schema.py", "data_types.py", "tokenizer.json",
-                 "tokenizer_config.json", "processor_config.json", "chat_template.jinja", "LICENSE"):
-        shutil.copyfile(merged_model / name, stage / name)
-    shutil.copyfile(Path(__file__).parent / "export_templates/modeling_valen_lora.py", stage / "modeling_valen_lora.py")
+    bundle_adapter_runtime(merged_model, stage)
     bundle_config = json.loads((merged_model / "config.json").read_text(encoding="utf-8"))
     bundle_config.update(architectures=["ValenQwenWithLoRA"], valen_base=parent["base"],
                          auto_map={"AutoConfig":"configuration_valen.ValenQwenConfig",
@@ -108,7 +118,9 @@ Original base with separate LoRA, Mixer, and trained visual merger weights.
 
 ## 完整模型加载 / Load the complete decision model
 
-环境沿用父目录：PyTorch 2.6.0、Transformers 5.4.0，另需 PEFT 0.18.1 和 safetensors。
+```bash
+python -m pip install torch torchvision transformers pillow av peft safetensors
+```
 Flash Attention 2 可通过 `attn_implementation="flash_attention_2"` 启用。
 
 ```python
@@ -136,9 +148,21 @@ result = model.predict({{
 print(result["answers"])
 ```
 
+同一个模型也接受 Decisions 请求：
+
+```python
+result = model.predict({{
+    "input": "There is one cat in the room.",
+    "questions": [{{"name": "is_cat", "type": "predicate",
+                   "instructions": "There is a cat in the room."}}],
+}}, temperature=1.0)
+print(result["answers"][0]["probability"])
+```
+
 `base_model_path` 指向原始官方 `{parent["base"]["repo"]}` 权重，本目录中的加载器会核对基座 SHA-256。
 省略该参数时使用配置记录的仓库及固定 revision；离线环境需提前缓存该版本。
-默认 share_state，也支持 `model.predict(..., execution="question")`；视频采样 16 帧。
+默认 shared_state，也支持 `model.predict(..., execution="question")`；视频采样 16 帧。
+两种协议均支持本地图片和视频；媒体用法见 https://valen-team.github.io/docs/valen/quickstart/。
 内部使用 `PeftModel.from_pretrained(backbone.language_model, .../lora)` 加载语言 LoRA，随后恢复 Mixer 和视觉 merger。
 适配器不会被融合。`is_trainable=True` 可启用 LoRA、Mixer 和视觉 merger 的梯度。
 

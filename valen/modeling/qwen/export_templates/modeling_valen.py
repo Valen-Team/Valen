@@ -33,7 +33,7 @@ class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
         self.head.float()
         # Preserve full-SFT FP32 weights with BF16 compute. / 保留全参 SFT 的存储与计算精度。
         self.backbone_autocast_dtype = (
-            torch.bfloat16 if config.valen_backbone_autocast_dtype == "bfloat16" else None
+            torch.bfloat16 if getattr(config, "valen_backbone_autocast_dtype", None) == "bfloat16" else None
         )
         self._processor = None
         # Supplied weights are already trained: do not reinitialize them.
@@ -82,10 +82,10 @@ class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
         self.eval()
         # Only request content reaches the compiler. / 只编译输入，不读取标签。
         request = request["request"] if "request" in request else request
+        temperature = request.get("temperature", temperature)
         public_request = request if "input" in request else None
         if public_request is not None:
-            request = to_internal(public_request)
-            temperature = public_request.get("temperature", temperature)
+            request = to_internal(public_request, allow_video=True)
         compiler = self.make_compiler(media_root, execution, processor)
         with local_images(request) as prepared:
             state = compiler.compile({"request": prepared})

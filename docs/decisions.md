@@ -14,14 +14,14 @@ different request and answer structures.
 | Score levels | Ordered `criteria` list | `levels` list with labels |
 | Answers | Mapping keyed by question ID | Ordered list with `name` and `type` |
 
-The HF export template’s `model.predict(request)` selects the protocol from the
-request fields and returns the matching answer structure. SGLang/vLLM select it by HTTP route.
+HF `model.predict(request)` and SDK `client.predict(request)` select the protocol from the
+request fields and return the matching answer structure. SGLang, vLLM and the Python ONNX server select it by HTTP route.
 The hosted API documents both protocols at the [API reference](https://valen-team.github.io/docs/valen/api/). Use the served model name configured by your deployment.
 
 The SGLang and vLLM plugins expose both routes through the native Valen decision
 head. See the [SGLang](../serving/sglang/README.md) and
 [vLLM](../serving/vllm/README.md) deployment instructions. For published HF models,
-see [Transformers inference](https://valen-team.github.io/docs/valen/quickstart/).
+see [Transformers inference](https://valen-team.github.io/docs/valen/quickstart/). For Python / JavaScript ONNX inference and the local ONNX service, see [ONNX & SDKs](onnx.md).
 
 ## SystemOne
 
@@ -92,22 +92,27 @@ For images, replace `input` with messages:
 PNG/JPEG/WebP base64 data URLs work across the three runtimes. vLLM retains its
 existing inline-image limits (16 images, 24 MiB encoded and 32 megapixels each).
 The local HF compiler also accepts image paths relative to `media_root`; it does
-not fetch remote URLs. Public video input is not implemented; use the existing
-local video compiler interface.
+not fetch remote URLs. For local HF video inference, use an `input_video` part:
+
+```json
+[{"role":"user","content":[
+  {"type":"input_video","video_url":"clip.mp4"}
+]}]
+```
+
+HF resolves the video path against `media_root` and uses the checkpoint's frame
+sampling settings. HTTP serving accepts extracted frames as image inputs.
 
 ## Protocol choice and model capabilities
 
-Choose the protocol to match your client. This does not change the model's
-capabilities. A future model capability needs an explicit representation in each
-protocol before it can be used through that protocol; conversion must not silently
-discard unsupported information. Current common types are predicate/noul, choice,
-and score. Arbitrary Decisions labels and boolean choice values are preserved in
-Decisions responses; SystemOne has string candidate keys and ordinal score levels.
-Do not assume every metadata field has a lossless cross-protocol equivalent.
+Both protocols support predicate/noul, choice, and score. Decisions responses
+preserve score labels and boolean choice values. SystemOne uses string candidate
+keys and ordinal score levels.
 
 Training JSONL and evaluation code use the `state` / `criteria` schema. This is
-separate from which public protocol an inference client chooses. Direct video
-inference currently uses the SystemOne HF message schema.
+separate from which public protocol an inference client chooses. Both HF and Python / JavaScript SDK protocols
+support `shared_state` and `question` execution. A request-body `temperature`
+overrides the keyword argument; either defaults to `1.0`.
 
 ## Validation
 

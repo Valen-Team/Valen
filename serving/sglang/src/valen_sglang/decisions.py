@@ -4,7 +4,7 @@ from copy import deepcopy
 from contextlib import contextmanager
 
 
-def to_internal(body):
+def to_internal(body, *, allow_video=False):
     """Validate public input and convert it to the training/compiler schema."""
     if not isinstance(body, dict):
         raise ValueError("Request must be an object")
@@ -32,8 +32,12 @@ def to_internal(body):
                 elif part.get("type") == "input_image" and isinstance(part.get("image_url"), str):
                     part["type"] = "image_url"
                     part["image_url"] = {"url": part["image_url"]}
+                elif allow_video and part.get("type") == "input_video" and isinstance(part.get("video_url"), str):
+                    part["type"] = "video_url"
+                    part["video_url"] = {"url": part["video_url"]}
                 else:
-                    raise ValueError("Use input_text or input_image content parts")
+                    kinds = "input_text, input_image or input_video" if allow_video else "input_text or input_image"
+                    raise ValueError(f"Use {kinds} content parts")
         state = {"messages": messages}
     else:
         raise ValueError("input must be text or a nonempty message list")

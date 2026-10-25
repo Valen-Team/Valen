@@ -8,7 +8,7 @@
 | `train/` | 按配置运行 SFT/RLCD，本机启动与集群提交 |
 | `data/` | 生成合成样例、筛选双编码器训练检查子集 |
 | `eval/` | 从通用实验快照绘制额外的详细图 |
-| `export/qwen/` | 合并完整权重、导出 ONNX/GGUF、校验和发布 |
+| `export/qwen/` | 合并完整权重、模块化 ONNX 导出与验证 |
 | `smoke/qwen/`、`smoke/dual_encoder/` | 各架构的训练与恢复集成检查 |
 
 <a id="installation"></a>
@@ -81,29 +81,28 @@ bash scripts/train/submit.sh smoke dual_encoder --output artifacts/dual_smoke_ru
 
 八份基础配置覆盖 SFT/RLCD × 四种 stage，均使用合成数据和短程设置。正式训练需调整 `data`、`model_path`、`epochs`、`max_steps` 和 `output`。每次独立训练使用新的输出目录；初始化与恢复见[训练指南](../valen/training/README.md)。
 
-## ONNX 与 GGUF 导出
+## ONNX 导出
 
-先安装转换依赖并下载完整模型。以下命令导出 0.8B；默认同时导出并验证 ONNX 和 GGUF：
+直接使用发布模型见 [ONNX 与 SDK](../docs/onnx_zh.md)，无需安装本仓库的训练或导出依赖。
 
-```bash
-python -m pip install -e '.[model-formats]'
-hf download Valen-Team/Valen-0.8B --local-dir models/Valen-0.8B
-python scripts/export/qwen/export_formats.py --models Valen-0.8B
-```
-
-`--models-dir` 指定源模型父目录，`--output-dir` 指定转换结果父目录，两者默认均为仓库的 `models/`；`--work-dir` 默认是 `artifacts/model-format-export/`。也可选择 `--models Valen-2B Valen-4B`。脚本自动获取源模型的 commit、权重摘要和模型说明，核验本地权重后创建转换目录，并检查文本、图片、视频在 `question` 和 `shared_state` 模式下的输出一致性。使用 `--revision <commit>` 固定源版本，或通过 `--source-metadata <hub-revisions.json>` 复用已记录的版本。模型与转换产物均由 Git 忽略。
-
-转换目录包含 `FORMAT_USAGE.md` 和专用推理入口 `valen_formats.py`。ONNX 使用 ONNX Runtime 执行视觉主干、语言主干与 Mixer；GGUF 保留原始张量精度，使用自定义 `valen_qwen` 架构，需要附带的 Valen 推理入口。
-
-发布到自己的 Hugging Face 命名空间时，先登录，再执行发布脚本：
+导出自己的完整 Valen 检查点时，使用模块化导出器，在独立环境中准备依赖：
 
 ```bash
-hf auth login
-python scripts/export/qwen/publish_formats.py \
-  --models Valen-0.8B --namespace YOUR_HF_NAMESPACE
+python -m venv export-env
+. export-env/bin/activate
+python -m pip install -r scripts/export/qwen/requirements-onnx-v2-export.txt
+git clone https://github.com/microsoft/onnxruntime-genai.git /path/to/onnxruntime-genai
+git -C /path/to/onnxruntime-genai checkout 6b7ff3ca3efa15da219050fdb4ecf8bed67875af
+python scripts/export/qwen/onnx_v2.py \
+  --source /path/to/Valen-0.8B --output /path/to/new-cpu-bundle \
+  --upstream /path/to/onnxruntime-genai
 ```
 
-`--exports-dir` 指定转换结果父目录，`--work-dir` 保存发布回执，`--formats ONNX` 或 `--formats GGUF` 可选择单个格式。发布脚本在上传前核验清单、文件摘要和源模型说明，上传后核对 Hub 上的文件大小及摘要；凭据使用 Hugging Face 登录缓存或 `HF_TOKEN`，不写入代码。两个入口也支持 `python -m scripts.export.qwen.export_formats` / `python -m scripts.export.qwen.publish_formats`。
+从 Valen 仓库根目录运行，输出目录须为空或不存在。CPU 默认导出 FP32；CUDA 使用 `--provider cuda --precision fp16`。使用 `onnx_v2_quantize.py` 添加仅量化 MLP 的 `q8-mlp` 候选；0.8B 浏览器图由 `onnx_v2_web.py` 单独生成。
+
+产物包含 `valen_onnx.json`、embedding、vision、融合决策图及外部权重，使用独立的 Python / JavaScript SDK 加载。导出完成后仍需完成原生输出对齐、质量与目标设备验证。已发布变体为 `fp32`、`q8-mlp`、`cuda-fp16`，以及 0.8B 的 `web-portable`。
+
+环境、完整参数与模板来源见 [模块化 ONNX 导出](export/qwen/README-onnx-v2_zh.md)（[English](export/qwen/README-onnx-v2.md)）。发布的 HF 模型仓库保存资产、清单和使用/验证文档；SDK 源码分别维护在 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript](https://github.com/Valen-Team/valen-sdk-js)、[C++](https://github.com/Valen-Team/valen-sdk-cpp) 仓库。
 
 ## 命令参数
 
