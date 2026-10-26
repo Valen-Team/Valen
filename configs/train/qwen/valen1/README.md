@@ -14,6 +14,20 @@ The recorded runs use **32 GPUs (4 nodes × 8 H200 GPUs)**. `tokens_per_step` is
 
 4B joint SFT uses a smaller microbatch of 8 states and a padded token limit of 32,768 per GPU to reduce peak memory. The completed 4B warmup used 32 / 131,072. The joint accumulation budget remains 65,536 tokens per GPU. **The 4B joint run has not completed when these configs are recorded.**
 
+## Measured time on 8 × L20Z
+
+One epoch of the 0.8B configs, measured on a single node of 8 NVIDIA L20Z GPUs (80 GB) with only the model, data and output paths changed. The data is the image/text training set (955,000 records, 1,256,911 QA; no JevBench 30k and no video): the single-QA files regrouped with `python -m valen.data.group_questions --max-questions 4`, the multi-QA files kept as they are, 732,944 states in total. Because `tokens_per_step` is per GPU, the global batch is a quarter of the recorded 32-GPU run.
+
+| Stage | Steps per epoch | States per step | Steady step time | Epoch, including startup |
+| --- | ---: | ---: | ---: | ---: |
+| Warmup (10% subset) | 124 | ≈590 | ≈1.2 s | ≈5 min |
+| Joint SFT | 616 | ≈1,190 | ≈4.4 s | ≈1.2 h |
+
+- Environment: PyTorch 2.10.0+cu128 (cuDNN 9.10), Transformers 5.14.1, flash-attn 2.8.3, flash-linear-attention 0.4.2. The times are extrapolated from 150 joint and 40 warmup steps. Before the kernels warm up, some steps take ≈28 s instead of ≈4–5 s: 15 of the first 150 joint steps, none in steps 126–150. The estimate includes them. A joint checkpoint is 9.6 GB and takes ≈10 s to save; peak memory is 37.8 GB per GPU.
+- With PyTorch 2.9.x and cuDNN 9.8–9.14, the BF16 Conv3d in the vision patch embedding falls back to `aten::slow_conv_dilated3d` (upstream [pytorch#166122](https://github.com/pytorch/pytorch/issues/166122), [pytorch#174051](https://github.com/pytorch/pytorch/issues/174051)). On the same node this gives about 4.3 states/s, roughly 47 h for the joint epoch, estimated from a 20,000-record run. PyTorch 2.6 (the version pinned in `pyproject.toml`), PyTorch 2.10 or cuDNN 9.15+ avoids the fallback. With 2.9.x, converting that weight to `channels_last_3d` restores the cuDNN path and the speed in the table.
+
+8 卡 L20Z 实测：图文数据（73 万个 state）上，0.8B 的预热约 5 分钟，联合全参数训练约 1.2 小时。PyTorch 2.9.x 搭配 cuDNN 9.8–9.14 时，视觉 patch embedding 的 Conv3d 会退到慢路径，耗时约为 40 倍。
+
 ## Run
 
 From the repository root, prepare the matching base model at `models/Qwen3.5-{0.8B,2B,4B}` and your datasets at `data/valen1/{warmup,train}.jsonl`, or edit those paths in the configs. Relative media paths resolve against the JSONL's parent directory. Dataset contents and machine-specific launch settings are supplied separately.
