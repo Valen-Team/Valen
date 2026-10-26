@@ -135,7 +135,7 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 ## 快速开始
 
-启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/integrations/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
+启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
 
 <a id="api-usage"></a>
 

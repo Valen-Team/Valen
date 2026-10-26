@@ -1,8 +1,8 @@
 """Draw the README's one-row, four-panel evaluation chart.
 
 General data: assets/figures/general/results.json (General-trained RL checkpoint).
-Sokoban data: docs/technical.md at revision 453f221 (500 single-step questions).
-The shared Preview display name follows the README; provenance is in docs/technical.md.
+Sokoban data: https://github.com/Valen-Team/Valen/blob/453f221/docs/technical.md (500 single-step questions).
+The shared Preview display name follows the README; provenance is in that pinned historical source.
 Style reference: https://huggingface.co/internlm/Atria-Dawn-Preview
 """
 

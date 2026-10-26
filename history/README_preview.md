@@ -85,13 +85,13 @@ Datasets: [General 100k training](https://huggingface.co/datasets/Valen-Team/Val
   <a href="assets/figures/evaluation-results.png"><img src="assets/figures/evaluation-results.png" alt="Four panels comparing Qwen3.5-0.8B, Qwen3.5-2B and Valen on General and Sokoban accuracy and mean end-to-end latency. General uses the General-trained RL checkpoint; Sokoban uses Valen-Preview-0923." width="1400"></a>
 </p>
 
-See the [technical notes](docs/technical.md#full-experiments) for training data, the Model Card and loss curves.
+See the [technical notes](https://valen-team.github.io/cookbook/validation/archive/historical-experiments-en.md) for training data, the Model Card and loss curves.
 
 <a id="quick-start"></a>
 
 ## 🚀 Quick start
 
-Install the dependencies listed in [requirements](docs/technical.md#requirements), then download both the Preview checkpoint and its Qwen3.5-2B base model.
+Install the dependencies listed in [requirements](https://github.com/Valen-Team/Valen/blob/453f221/docs/technical.md), then download both the Preview checkpoint and its Qwen3.5-2B base model.
 
 ```bash
 # Download the Valen-Preview-0923 checkpoint.

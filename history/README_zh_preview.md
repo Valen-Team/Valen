@@ -85,13 +85,13 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
   <a href="assets/figures/evaluation-results.png"><img src="assets/figures/evaluation-results.png" alt="四个子图比较 Qwen3.5-0.8B、Qwen3.5-2B 和 Valen 的 General 与推箱子准确率及平均端到端耗时。General 使用通用 RL checkpoint，推箱子使用 Valen-Preview-0923。" width="1400"></a>
 </p>
 
-训练数据、Model Card 和 loss 曲线见[技术说明](docs/technical_zh.md#完整实验)。
+训练数据、Model Card 和 loss 曲线见[技术说明](https://valen-team.github.io/cookbook/validation/archive/historical-experiments-zh-Hans.md)。
 
 <a id="快速开始"></a>
 
 ## 🚀 快速开始
 
-先按[环境要求](docs/technical_zh.md#环境要求)安装依赖，再下载 Preview checkpoint 及其对应的 Qwen3.5-2B Base 模型。
+先按[环境要求](https://github.com/Valen-Team/Valen/blob/453f221/docs/technical_zh.md)安装依赖，再下载 Preview checkpoint 及其对应的 Qwen3.5-2B Base 模型。
 
 ```bash
 # 下载 Valen-Preview-0923 checkpoint。

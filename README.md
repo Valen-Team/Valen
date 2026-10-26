@@ -135,7 +135,7 @@ Earlier results remain in the [archived README](history/README_preview.md).
 
 ## Quick start
 
-For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/integrations/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
+For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/onnx/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
 
 <a id="api-usage"></a>
 

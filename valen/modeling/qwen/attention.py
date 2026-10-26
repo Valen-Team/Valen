@@ -28,7 +28,7 @@ def attention_implementation(config):
     except (ImportError, OSError) as exc:
         # 不自动下载或回退，以免误记实验后端。 / Never silently replace the requested backend.
         raise ImportError("Cannot load FlashAttention-2. Install a flash-attn build matching PyTorch/CUDA; "
-                          "see docs/configuration.md for installation.") from exc
+                          "see https://valen-team.github.io/docs/valen/configuration/ for attention settings.") from exc
     return kind
 
 
