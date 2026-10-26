@@ -1,6 +1,6 @@
 # Valen 模块化 ONNX 导出
 
-已发布模型的推理与 SDK 使用见 [ONNX 与 SDK 指南](../../../docs/onnx_zh.md)。本页用于从自己的原生检查点导出模型；直接推理无需导出环境。
+已发布模型的推理与 SDK 使用见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。本页用于从自己的原生检查点导出模型；直接推理无需导出环境。
 
 从原生 merged Valen 检查点导出，保留已训练的视觉模块与 Mixer。复用固定版本 ORT GenAI 构建器，SDK 推理不依赖 Torch/Transformers。
 

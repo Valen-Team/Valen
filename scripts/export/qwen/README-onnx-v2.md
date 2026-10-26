@@ -1,6 +1,6 @@
 # Valen modular ONNX export
 
-For published models and runtime SDKs, use the [ONNX & SDK guide](../../../docs/onnx.md). This page covers exporting your own native checkpoint; inference does not need the export environment.
+For published models and runtime SDKs, use the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/). This page covers exporting your own native checkpoint; inference does not need the export environment.
 
 Export the native merged **Valen** checkpoint, including its trained vision tower and Mixer. The pipeline reuses Microsoft's pinned Qwen3.5 ORT GenAI builder and Valen's component exporter. Runtime SDKs are separate packages and do not need Torch/Transformers.
 

@@ -1,6 +1,6 @@
 # 代码目录
 
-命令入口位于包顶层，实际逻辑分为数据、模型、训练、评估四部分。下面的路径可直接用于定位实现；端到端流程见[架构说明](../docs/architecture_zh.md)。此处的 `valen/evaluation/` 负责通用逐题评估；仓库根目录另有[任务评测包](../evaluation/README.md)，实现 Sokoban 环境和完整游戏评测。
+命令入口位于包顶层，实际逻辑分为数据、模型、训练、评估四部分。下面的路径可直接用于定位实现；端到端流程见[架构说明](https://valen-team.github.io/zh-Hans/docs/valen/architecture/)。此处的 `valen/evaluation/` 负责通用逐题评估；仓库根目录另有[任务评测包](../evaluation/README.md)，实现 Sokoban 环境和完整游戏评测。
 
 | 文件 | 主要对象或函数 | 职责 |
 | --- | --- | --- |

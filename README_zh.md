@@ -37,15 +37,15 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 版本选择
 
-首次体验使用[网页或免费 API](https://valen-team.github.io/)，无需下载模型。[应该选择哪个版本？](docs/choosing_zh.md) · [GGUF 本地服务](docs/gguf_zh.md)
+首次体验使用[网页或免费 API](https://valen-team.github.io/)，无需下载模型。[应该选择哪个版本？](https://valen-team.github.io/zh-Hans/docs/valen/choosing/) · [GGUF 本地服务](https://valen-team.github.io/zh-Hans/docs/valen/gguf/)
 
 <a id="news"></a>
 
 ## 最新动态
 
-- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；使用 [Valen 定制 CPU 运行包](docs/gguf_zh.md)。官方未修改 llama.cpp/Ollama 不视为支持。
+- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；使用 [Valen 定制 CPU 运行包](https://valen-team.github.io/zh-Hans/docs/valen/gguf/)。官方未修改 llama.cpp/Ollama 不视为支持。
 
-- **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](docs/onnx_zh.md)。
+- **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
 
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
 - **2026-10-18**：发布[JevalKit](https://github.com/Valen-Team/JevalKit)，一个面向 Jev 类决策模型的开源评测工具，提供统一的模型接口和已整理的评测数据。 [🤗 JevalKit 排行榜](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard)。
@@ -135,7 +135,7 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 ## 快速开始
 
-启动本地 HTTP 服务请阅读[部署指南](docs/inference_zh.md)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
+启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/integrations/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
 
 <a id="api-usage"></a>
 
@@ -229,8 +229,8 @@ Key 只保存在服务端环境变量中。
 
 | 需求 | 推荐入口 |
 | --- | --- |
-| C++ Linux CPU HTTP / GGUF | [Valen 定制 llama-server](docs/gguf_zh.md) |
-| Python CPU / NVIDIA CUDA、Node.js 或浏览器应用 | [ONNX 与 SDK](docs/onnx_zh.md) |
+| C++ Linux CPU HTTP / GGUF | [Valen 定制 llama-server](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) |
+| Python CPU / NVIDIA CUDA、Node.js 或浏览器应用 | [ONNX 与 SDK](https://valen-team.github.io/zh-Hans/docs/valen/onnx/) |
 | 原生 PyTorch / Transformers 模型 | [Transformers](#transformers) |
 | GPU HTTP 服务 | [SGLang](serving/sglang/README_zh.md) · [vLLM](serving/vllm/README_zh.md) |
 | 原生 C++ 文本集成 | [C++ 仓库](https://github.com/Valen-Team/valen-sdk-cpp) |
@@ -410,7 +410,7 @@ with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
 
 `q8-mlp` 可降低下载体积与文本内存，CUDA 使用 `cuda-fp16`，0.8B 浏览器使用专用 `web-portable`。
 
-完整的图片/视频、SystemOne、CUDA、浏览器、本地 HTTP 服务与离线缓存示例见 [ONNX 与 SDK 指南](docs/onnx_zh.md)。[Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。自己导出检查点见 [模块化 ONNX 导出](scripts/export/qwen/README-onnx-v2_zh.md)。
+完整的图片/视频、SystemOne、CUDA、浏览器、本地 HTTP 服务与离线缓存示例见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。[Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。自己导出检查点见 [模块化 ONNX 导出](scripts/export/qwen/README-onnx-v2_zh.md)。
 
 ### 3. 评估 VisualDecisionBench
 
@@ -426,56 +426,13 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 添加 `--lora --revision lora-ckpt` 可评估旧 LoRA 模型。输出 `predictions.jsonl` 和 `metrics.json`，包含图像/视频、Choice/Noul/Score 分项与耗时。视频采样 16 帧；准确率仅统计硬标签题，软标签 Score 题参与概率指标计算。
 
-### 4. 预训练
+### 4. 训练与微调
 
-从 Qwen3.5 基座出发，通过两阶段 SFT 构建 Valen 决策模型。
+优先从完整 Valen-0.8B 使用 LoRA SFT；从 Qwen 基座开始的评分头 warmup / joint SFT 不是语言模型预训练。RLCD 为实验性路径。
 
-共享 state 配方使用 Mixer。请安装 Flash Attention 2，或将 `model.attn_implementation` 设置为 `sdpa`。先在[配置](configs/train/qwen/)中设置数据路径、输出目录和训练预算；默认使用 smoke 数据，最多训练 100 步。
+[方法与配置](https://valen-team.github.io/zh-Hans/docs/valen/training/) · [完整可执行领域案例](https://valen-team.github.io/zh-Hans/cookbook/domain-finetuning/) · [保存、恢复和导出](https://valen-team.github.io/zh-Hans/docs/valen/checkpoints/)
 
-```bash
-python scripts/setup/prepare_model.py
-
-# 两阶段 SFT：先预热决策头，再联合训练 LoRA、Mixer 和视觉 merger。
-python -m valen.train --config configs/train/qwen/sft_shared_state_warmup.json
-python -m valen.train --config configs/train/qwen/sft_shared_state_joint.json \
-  --initialize output/qwen-shared-state/warmup/latest
-
-# RLCD：从 SFT checkpoint 开始，对候选动作进行 RL 优化。
-python -m valen.train --config configs/train/qwen/rlcd_shared_state_joint.json \
-  --initialize output/qwen-shared-state/joint/latest
-```
-
-切换为 **full training** 时保留预热阶段，将联合 SFT 的配置替换为 [`sft_shared_state_full_joint.json`](configs/train/qwen/sft_shared_state_full_joint.json)，继续使用相同的 `--initialize` checkpoint。该配方设置 `model.finetuning_type="full"`，更新语言主干、视觉主干和 Mixer；设为 `"lora"` 则使用 LoRA。两个阶段的模型与数据路径需保持一致。
-
-```bash
-python -m valen.train --config configs/train/qwen/sft_shared_state_full_joint.json \
-  --initialize output/qwen-shared-state/warmup/latest
-```
-
-多卡使用 `VALEN_GPUS=8 bash scripts/train/launch.sh <config> [--initialize <checkpoint>]`。奖励设置与 checkpoint 恢复见[训练指南](valen/training/README.md)。
-
-### 5. 微调
-
-从已发布的完整 Valen 模型继续训练。下载模型后，选择 **LoRA** 或**全参数微调**：
-
-```bash
-hf download Valen-Team/Valen-2B --local-dir models/Valen-2B
-
-python -m valen.train --config configs/train/qwen/sft_finetune_lora.json
-# 或更新完整主干与 Mixer：
-python -m valen.train --config configs/train/qwen/sft_finetune_full.json
-```
-
-在所选配置中设置 `model.model_path`、`data.path` 和训练预算；示例使用小型纯文本 smoke 数据。自有文本、图片和视频数据遵循 [JSONL 格式](docs/data-format_zh.md)。使用 0.8B 或 4B 时，下载对应仓库并修改 `model.model_path`。加载器保留已训练的主干和 Mixer，并继承发布模型的决策头结构、共享 state 模式和媒体设置；显式设置的决策头参数必须与模型一致。这两份配方使用 SDPA。
-
-发布权重通过 `model.model_path` 加载，并开始新的优化器和训练进度。`--initialize` 用于从本仓库的训练 checkpoint 开始新实验；`--resume` 用于恢复中断的任务，包括优化器状态和进度：
-
-```bash
-python -m valen.train --config configs/train/qwen/sft_finetune_lora.json \
-  --resume output/valen-finetune/lora/latest
-```
-
-<a id="参与贡献"></a>
+<a id="contributions"></a>
 
 ## 参与贡献
 
@@ -511,3 +468,5 @@ python -m valen.train --config configs/train/qwen/sft_finetune_lora.json \
   url          = {https://github.com/Valen-Team/Valen}
 }
 ```
+
+用户指南唯一维护在官网：[Documentation](https://valen-team.github.io/zh-Hans/docs/) · [Fine-tuning](https://valen-team.github.io/zh-Hans/docs/valen/training/) · [Probabilities](https://valen-team.github.io/zh-Hans/docs/valen/probabilities/) · [Cookbook](https://valen-team.github.io/zh-Hans/cookbook/).

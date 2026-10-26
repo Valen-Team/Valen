@@ -59,7 +59,7 @@ python -m evaluation.decision_index pipeline \
 - `--option device=cpu` or `device=cuda:1`: choose a different device.
 - `--option attention=eager|sdpa|flash_attention_2`: choose one backend.
   Flash Attention requires a compatible installation and CUDA GPU; see
-  [attention settings](../../docs/configuration.md).
+  [attention settings](https://valen-team.github.io/docs/valen/configuration/).
 
 For the CLEF-compatible **0.2.1 public suite**, change `--edition` to `0.2.1`,
 point `--suite-dir` at its separately prepared suite, and use a separate output
@@ -91,7 +91,7 @@ python -m evaluation.decision_index pipeline \
 
 `--model` also accepts the 2B or 4B ONNX repository or a local model directory. Use `--option variant=q8-mlp` for CPU MLP quantization and `--option threads=4` to set CPU threads. Once fully cached, add `--option offline=true` to prevent downloads; `--option revision=<commit>` selects a model revision. Keep separate output directories for each model and variant.
 
-This adapter uses the native decision head and `shared_state`, retaining the upstream questions and candidate order without truncation. It is a CPU evaluation adapter; see [ONNX & SDKs](../../docs/onnx.md) for in-app CUDA, images/video and browser inference.
+This adapter uses the native decision head and `shared_state`, retaining the upstream questions and candidate order without truncation. It is a CPU evaluation adapter; see [ONNX & SDKs](https://valen-team.github.io/docs/valen/onnx/) for in-app CUDA, images/video and browser inference.
 
 
 ## Inputs, precision and outputs

@@ -57,7 +57,7 @@ python -m evaluation.decision_index pipeline \
 - `--option device=cpu` 或 `device=cuda:1`：选择运行设备。
 - `--option attention=eager|sdpa|flash_attention_2`：选择其中一个 attention 后端。
   Flash Attention 需要兼容的安装包和 CUDA GPU，见
-  [attention 配置](../../docs/configuration_zh.md)。
+  [attention 配置](https://valen-team.github.io/zh-Hans/docs/valen/configuration/)。
 
 评测 CLEF 对应的 **0.2.1 公开集**时，将 `--edition` 改为 `0.2.1`，
 `--suite-dir` 指向单独准备的该版冻结集，并使用独立输出目录。
@@ -88,7 +88,7 @@ python -m evaluation.decision_index pipeline \
 
 `--model` 也可使用 2B、4B ONNX 仓库或本地模型目录。`--option variant=q8-mlp` 选择 CPU MLP 量化版本；`--option threads=4` 设置 CPU 线程数。已有完整缓存时，可加入 `--option offline=true` 禁止下载；`--option revision=<commit>` 固定模型版本。不同模型或变体应使用独立输出目录。
 
-本入口使用原生决策头与 `shared_state`，保留上游问题与候选顺序，不截断候选。它是 CPU 评测适配器；应用内 CUDA、图片/视频与浏览器推理见 [ONNX 与 SDK](../../docs/onnx_zh.md)。
+本入口使用原生决策头与 `shared_state`，保留上游问题与候选顺序，不截断候选。它是 CPU 评测适配器；应用内 CUDA、图片/视频与浏览器推理见 [ONNX 与 SDK](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
 
 
 ## 输入、精度与输出

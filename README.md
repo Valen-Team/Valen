@@ -31,7 +31,7 @@
 
 ## Choose a version
 
-For a first try, use the [web experience or free API](https://valen-team.github.io/) without downloading weights. [Which version should I choose?](docs/choosing.md) · [GGUF local service](docs/gguf.md)
+For a first try, use the [web experience or free API](https://valen-team.github.io/) without downloading weights. [Which version should I choose?](https://valen-team.github.io/docs/valen/choosing/) · [GGUF local service](https://valen-team.github.io/docs/valen/gguf/)
 
 <a id="introduction"></a>
 
@@ -43,9 +43,9 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## News
 
-- **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; use the [Valen custom CPU runtime](docs/gguf.md). Unmodified llama.cpp/Ollama support is not claimed.
+- **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; use the [Valen custom CPU runtime](https://valen-team.github.io/docs/valen/gguf/). Unmodified llama.cpp/Ollama support is not claimed.
 
-- **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](docs/onnx.md).
+- **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/).
 
 - **2026-10-21**: The [web chat](https://valen-team.github.io/) and [bilingual documentation](https://valen-team.github.io/docs/) are live, with a [free decision API](#api-usage) requiring no key.
 - **2026-10-18**: Released [JevalKit](https://github.com/Valen-Team/JevalKit), an open-source evaluation toolkit for Jev-like decision models, providing unified model interfaces and prepared evaluation datasets. The [🤗 JevalKit Leaderboard](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard).
@@ -135,7 +135,7 @@ Earlier results remain in the [archived README](history/README_preview.md).
 
 ## Quick start
 
-For a local HTTP service, start with the [deployment guide](docs/inference.md). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
+For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/integrations/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
 
 <a id="api-usage"></a>
 
@@ -229,8 +229,8 @@ Keep keys in server-side environment variables.
 
 | Goal | Starting point |
 | --- | --- |
-| C++ Linux CPU HTTP / GGUF | [Valen custom llama-server](docs/gguf.md) |
-| Python CPU / NVIDIA CUDA, Node.js or browser applications | [ONNX & SDKs](docs/onnx.md) |
+| C++ Linux CPU HTTP / GGUF | [Valen custom llama-server](https://valen-team.github.io/docs/valen/gguf/) |
+| Python CPU / NVIDIA CUDA, Node.js or browser applications | [ONNX & SDKs](https://valen-team.github.io/docs/valen/onnx/) |
 | Native PyTorch / Transformers model | [Transformers](#transformers) |
 | GPU HTTP service | [SGLang](serving/sglang/README.md) · [vLLM](serving/vllm/README.md) |
 | Native C++ text integration | [C++ repository](https://github.com/Valen-Team/valen-sdk-cpp) |
@@ -410,7 +410,7 @@ The example prints a probability from 0 to 1; a higher value means the model is 
 
 Use `q8-mlp` to reduce download size and text memory, `cuda-fp16` for CUDA, and the dedicated 0.8B `web-portable` variant for browsers.
 
-See the [ONNX & SDK guide](docs/onnx.md) for images/video, SystemOne, CUDA, browser inference, the local HTTP server and offline caching. [Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). To export your own checkpoint, use the [modular ONNX exporter](scripts/export/qwen/README-onnx-v2.md).
+See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/) for images/video, SystemOne, CUDA, browser inference, the local HTTP server and offline caching. [Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). To export your own checkpoint, use the [modular ONNX exporter](scripts/export/qwen/README-onnx-v2.md).
 
 ### 3. Evaluate VisualDecisionBench
 
@@ -426,54 +426,11 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 Add `--lora --revision lora-ckpt` to evaluate the earlier LoRA model. Outputs: `predictions.jsonl` and `metrics.json`, including image/video and Choice/Noul/Score breakdowns and elapsed time. Videos use 16 frames; accuracy uses hard labels, while soft-label Score questions contribute probability metrics.
 
-### 4. Pre-training
+### 4. Training and fine-tuning
 
-Build a Valen decision model from a Qwen3.5 base using two-stage SFT.
+Start with complete Valen-0.8B and LoRA SFT. Head warmup / joint SFT from Qwen is not language-model pretraining. RLCD is experimental.
 
-The shared-state recipes use Mixer. Install Flash Attention 2 or set `model.attn_implementation` to `sdpa`. Set your data paths, output directories and training budget in the [configs](configs/train/qwen/); the defaults use smoke data and a 100-step limit.
-
-```bash
-python scripts/setup/prepare_model.py
-
-# Two-stage SFT: head warmup, then joint LoRA + Mixer + visual merger.
-python -m valen.train --config configs/train/qwen/sft_shared_state_warmup.json
-python -m valen.train --config configs/train/qwen/sft_shared_state_joint.json \
-  --initialize output/qwen-shared-state/warmup/latest
-
-# RLCD: candidate-action RL initialized from the SFT checkpoint.
-python -m valen.train --config configs/train/qwen/rlcd_shared_state_joint.json \
-  --initialize output/qwen-shared-state/joint/latest
-```
-
-For **full training**, keep the warmup stage and replace the joint SFT recipe with [`sft_shared_state_full_joint.json`](configs/train/qwen/sft_shared_state_full_joint.json), using the same `--initialize` checkpoint. This sets `model.finetuning_type="full"` and updates the language backbone, vision backbone and Mixer; `"lora"` selects adapter training. Set the model and data paths in both stages consistently.
-
-```bash
-python -m valen.train --config configs/train/qwen/sft_shared_state_full_joint.json \
-  --initialize output/qwen-shared-state/warmup/latest
-```
-
-For multiple GPUs, use `VALEN_GPUS=8 bash scripts/train/launch.sh <config> [--initialize <checkpoint>]`. See the [training guide](valen/training/README.md) for RLCD rewards and checkpoint recovery.
-
-### 5. Fine-tuning
-
-Start from a released complete Valen model. Download the model and choose **LoRA** or **full fine-tuning**:
-
-```bash
-hf download Valen-Team/Valen-2B --local-dir models/Valen-2B
-
-python -m valen.train --config configs/train/qwen/sft_finetune_lora.json
-# Or update the complete backbone and Mixer:
-python -m valen.train --config configs/train/qwen/sft_finetune_full.json
-```
-
-Set `model.model_path`, `data.path` and your training budget in the chosen config; examples use the small text smoke dataset. Custom text, image and video data follow the [JSONL format](docs/data-format.md). For 0.8B or 4B, download the matching repository and change `model.model_path`. The loader retains the trained backbone and Mixer, and inherits the saved head architecture, shared-state mode and media settings. Explicit head settings must match the released model. These recipes use SDPA.
-
-Published weights are loaded through `model.model_path`, starting a new optimizer and training progress. `--initialize` loads this repository's training checkpoint for a new experiment; `--resume` restores an interrupted task, including optimizer state and progress:
-
-```bash
-python -m valen.train --config configs/train/qwen/sft_finetune_lora.json \
-  --resume output/valen-finetune/lora/latest
-```
+[Methods and configuration](https://valen-team.github.io/docs/valen/training/) · [complete executable domain recipe](https://valen-team.github.io/cookbook/domain-finetuning/) · [save, resume and export](https://valen-team.github.io/docs/valen/checkpoints/)
 
 <a id="contributions"></a>
 
@@ -511,3 +468,5 @@ If you use Valen in your work, please cite this repository:
   url          = {https://github.com/Valen-Team/Valen}
 }
 ```
+
+User guides are maintained only on the website: [Documentation](https://valen-team.github.io/docs/) · [Fine-tuning](https://valen-team.github.io/docs/valen/training/) · [Probabilities](https://valen-team.github.io/docs/valen/probabilities/) · [Cookbook](https://valen-team.github.io/cookbook/).

@@ -47,7 +47,7 @@ python scripts/setup/prepare_model.py
 
 脚本固定下载 2B，与主 README 和八份训练示例配置一致。使用其他规格时，需另行下载完整快照，并修改训练配置中的 `model_path`。下载完成后，训练使用本地文件加载，不会补齐缺失权重。
 
-`data/smoke/` 已包含合成样例；重新生成可运行 `python scripts/data/make_smoke_data.py`，它会覆盖这些样例。自有数据格式见[数据说明](../docs/data-format_zh.md)。
+`data/smoke/` 已包含合成样例；重新生成可运行 `python scripts/data/make_smoke_data.py`，它会覆盖这些样例。自有数据格式见[数据说明](https://valen-team.github.io/zh-Hans/docs/valen/data-format/)。
 
 ## 训练与推理
 
@@ -83,7 +83,7 @@ bash scripts/train/submit.sh smoke dual_encoder --output artifacts/dual_smoke_ru
 
 ## ONNX 导出
 
-直接使用发布模型见 [ONNX 与 SDK](../docs/onnx_zh.md)，无需安装本仓库的训练或导出依赖。
+直接使用发布模型见 [ONNX 与 SDK](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)，无需安装本仓库的训练或导出依赖。
 
 导出自己的完整 Valen 检查点时，使用模块化导出器，在独立环境中准备依赖：
 
@@ -112,7 +112,7 @@ python scripts/export/qwen/onnx_v2.py \
 | `python -m valen.inference` | `--checkpoint`、`--data`、`--output`（文件） | `--device`（默认 `cuda`）、`--calibration` |
 | `python -m valen.evaluate` | `--checkpoint`、`--data`、`--output`（目录） | `--device`（默认 `cuda`） |
 
-训练设备、学习率、数据路径等在 JSON 中设置，不能直接使用 `train --device` 或 `train --data`。详细字段见[配置参考](../docs/configuration_zh.md)。各入口可通过 `--help` 查看参数，需要先安装 Python 依赖。
+训练设备、学习率、数据路径等在 JSON 中设置，不能直接使用 `train --device` 或 `train --data`。详细字段见[配置参考](https://valen-team.github.io/zh-Hans/docs/valen/configuration/)。各入口可通过 `--help` 查看参数，需要先安装 Python 依赖。
 
 ## 通用评估
 
@@ -131,7 +131,7 @@ python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 \
   --output output/sft_warmup/smoke_eval_4gpu
 ```
 
-输出包括逐题预测 `predictions.jsonl`、每卡分片及汇总 `metrics.json`。指标包含硬标签准确率、NLL、Brier，以及适用的二分类 F1、Score 误差和 RPS；按任务、模态、语言及领域汇总。命令始终使用显式 `--data` 参数指定的数据。评估固定使用温度 1，没有 `--calibration` 参数；指标公式和时间统计的范围见[推理与评估](../docs/evaluation_zh.md)。
+输出包括逐题预测 `predictions.jsonl`、每卡分片及汇总 `metrics.json`。指标包含硬标签准确率、NLL、Brier，以及适用的二分类 F1、Score 误差和 RPS；按任务、模态、语言及领域汇总。命令始终使用显式 `--data` 参数指定的数据。评估固定使用温度 1，没有 `--calibration` 参数；指标公式和时间统计的范围见[推理与评估](https://valen-team.github.io/zh-Hans/docs/valen/evaluation/)。
 
 ## 实验图
 

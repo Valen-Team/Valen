@@ -1,4 +1,4 @@
-"""Serial, same-worker CPU benchmark. See docs/backend-validation.md.
+"""Serial, same-worker CPU benchmark. See https://valen-team.github.io/docs/valen/backend-validation/.
 
 Config supplies existing cached model commands; this tool never installs anything.
 Each backend/modality gets a fresh process. Cold means process-cold, not disk-cold.
