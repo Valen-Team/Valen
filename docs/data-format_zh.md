@@ -4,7 +4,7 @@
 
 训练与评估数据使用 UTF-8 JSONL：每行一条 JSON 记录，空行忽略。读取器一次将文件读入内存，空文件会报错。以下示例为方便阅读展开显示，写入 `.jsonl` 时需压成一行。可直接使用的文件见 [data/smoke](../data/smoke/)。
 
-推理可直接传入请求对象；SystemOne 使用 `state` 与问题字典，Decisions 使用 `input` 与问题列表。示例见 [推理协议](decisions.md)、[Transformers Notebook](../cookbook/local_inference_zh.ipynb) 与 [ONNX / SDK](onnx_zh.md)。本页介绍训练与评测数据文件。
+推理可直接传入请求对象；SystemOne 使用 `state` 与问题字典，Decisions 使用 `input` 与问题列表。示例见 [推理协议](decisions.md)、[本地推理教程](https://valen-team.github.io/zh-Hans/cookbook/local-inference/) 与 [ONNX / SDK](onnx_zh.md)。本页介绍训练与评测数据文件。
 
 ```json
 {

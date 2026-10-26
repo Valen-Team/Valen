@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="cookbook/api_quickstart_zh.ipynb">Cookbook</a>
+  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
 <a id="简介"></a>
@@ -50,7 +50,7 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
 - **2026-10-18**：发布[JevalKit](https://github.com/Valen-Team/JevalKit)，一个面向 Jev 类决策模型的开源评测工具，提供统一的模型接口和已整理的评测数据。 [🤗 JevalKit 排行榜](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard)。
 - **2026-10-13**：发布 Valen 模型的 ONNX 和 GGUF 版本，可在 [Hugging Face](https://huggingface.co/Valen-Team) 下载。
-- **2026-10-13**：支持通过 API 调用 `valen-preview-0923`、`valen-0-8b`、`valen-2b` 和 `valen-4b`，使用示例见 [API 入门 Notebook](cookbook/api_quickstart_zh.ipynb)。
+- **2026-10-13**：支持通过 API 调用 `valen-preview-0923`、`valen-0-8b`、`valen-2b` 和 `valen-4b`，使用示例见 [API 入门教程](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)。
 - **2026-10-07**：**更快、更准、更通用。** 发布支持文本、图像和视频的最新多模态 System One 模型 **Valen（[0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) / [2B](https://huggingface.co/Valen-Team/Valen-2B) / [4B](https://huggingface.co/Valen-Team/Valen-4B)）**，以及 [**VisualDecisionBench**](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) 评测基准。
 - **2026-09-30**：**训练与推理支持：** 支持 Flash Attention 2 训练与推理、多机多卡训练，并提高训练时的 GPU 显存利用率。
 - **2026-09-23**：**Valen** 仓库开源，同时发布 [**Valen-preview-0923**](https://huggingface.co/Valen-Team/Valen-Preview-0923) 及其对应的[**训练数据**](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k)。
@@ -135,7 +135,7 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 ## 快速开始
 
-启动本地 HTTP 服务请阅读 [本地部署指南](docs/inference_zh.md)；Python 示例请参考 Cookbook Notebook：**[API 入门](cookbook/api_quickstart_zh.ipynb)** · **[Transformers 本地推理](cookbook/local_inference_zh.ipynb)**。两份教程都使用真实验证案例，展示输入、可执行代码和已保存结果。English: [API](cookbook/api_quickstart.ipynb) · [Local inference](cookbook/local_inference.ipynb).
+启动本地 HTTP 服务请阅读[部署指南](docs/inference_zh.md)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
 
 <a id="api-usage"></a>
 

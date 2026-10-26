@@ -31,40 +31,21 @@ python -m pip install ".[onnx]"
 python examples/local_decisions.py
 ```
 
-首个示例针对同一段客户消息提出三个问题：
+
+
+最短通路检查：
 
 ```python
 from valen_sdk import Valen
 
 with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
-    result = client.decisions(
-        input="I moved. Please ship my order to 12 Elm Street instead.",
-        questions=[
-            {"name": "intent", "type": "choice", "instructions": "What does the customer want?",
-             "choices": [{"value": "address", "description": "Change the delivery address"},
-                         {"value": "cancel", "description": "Cancel the order"}]},
-            {"name": "change_address", "type": "predicate",
-             "instructions": "The customer requests a delivery address change."},
-            {"name": "explicitness", "type": "score", "instructions": "How explicit is the request?",
-             "levels": [{"label": "none", "description": "No request"},
-                        {"label": "possible", "description": "Asks whether a change is possible"},
-                        {"label": "explicit", "description": "Explicitly requests a change"}]},
-        ],
-    )
-    print("Intent:", result.by_name("intent").choice)
-    print(f"Address change probability: {result.by_name('change_address').probability:.3f}")
-    print(f"Explicitness score (0–2): {result.by_name('explicitness').score:.3f}")
+    result = client.decisions(input="A cat is on the sofa.", questions=[
+        {"name": "cat", "type": "predicate", "instructions": "A cat is present."},
+    ])
+    print(result.by_name("cat").probability)
 ```
 
-0.8B FP32 的示例输出：
-
-```text
-Intent: address
-Address change probability: 0.998
-Explicitness score (0–2): 1.921
-```
-
-类别可用于业务路由，0–1 概率可用于筛选需复核的请求，评分可用于排序。评分是从零开始的等级索引的概率加权平均值，因此示例中三个等级对应 0–2。不同精度下数值可能有所变化。
+完整工单分流、图片筛选、视频标注与真实输出只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护。本页维护安装、后端选项和最短调用。`Valen.local` 是 ONNX 路径；GGUF 服务须通过 `Valen.remote` 接入。
 
 ## 模型与变体
 

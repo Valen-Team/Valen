@@ -40,7 +40,7 @@ curl --fail http://127.0.0.1:8080/v1/systemone \
   -d '{"state":{"messages":[{"role":"user","content":"The film was excellent."}]},"questions":{"sentiment":{"type":"choice","instructions":"Classify the sentiment.","criteria":{"positive":"Positive","negative":"Negative"}}}}'
 ```
 
-The response contains structured candidate probabilities, not generated text. The whole request must fit the context and batch capacities. This package claims newly verified text serving only; existing source-build image/video tests do not qualify this package, and video is disabled in this build. Substitute another size’s model file as needed; never mix vision modules between sizes.
+The response contains structured candidate probabilities, not generated text. The whole request must fit the context and batch capacities. The original release qualified text serving only. P1 additionally verified this exact prebuilt binary on cached 0.8B Q8_0 fixed-image cases; see the [recorded scope and preserved failures](https://valen-team.github.io/cookbook/validation/). Direct video is not compiled into this package; source-build video tests do not qualify it. Substitute another size’s model file as needed; never mix vision modules between sizes.
 
 Source pins, patches, licenses and source-build/Ollama instructions are available in each model repository:
 
@@ -61,4 +61,10 @@ Source pins, patches, licenses and source-build/Ollama instructions are availabl
 | Compiler | GCC 11.4 / Ubuntu 22.04 |
 | License | llama.cpp MIT + Valen patches Apache-2.0; notices and source included |
 
-The final archive was extracted on the cluster, checked file by file, and passed a real 0.8B Q8_0 text request. Two requests returned identical answers, including the extracted-package run. No model was downloaded again. This package claims this text scope only; the model cards record prior source-build validation for other sizes. The native prebuilt package provides the first-run path without Docker; no additional Docker image is required for this release.
+The final archive was extracted on the cluster, checked file by file, and passed a real 0.8B Q8_0 text request. Two requests returned identical answers, including the extracted-package run. No model was downloaded again. That original text check remains unchanged; additional P1 fixed-image evidence is linked above. The model cards record prior source-build validation for other sizes. The native prebuilt package provides the first-run path without Docker; no additional Docker image is required for this release.
+
+## P1 image qualification
+
+P1 reused this exact extracted runtime, with cached 0.8B Q8_0 and the matching published `vision-native-limits-F32.gguf`. Add `--mmproj /your/cache/vision-native-limits-F32.gguf --no-mmproj-offload --image-min-tokens 64 --image-max-tokens 256` to the launch command above; keep model/vision sizes matched. The image module SHA256 is `db28fe68408846202ad9dd8ac71c4f43df7d8665e0d94422fa1e91e3029fe03b` for the tested 0.8B file. Reuse caches and verify server metadata before downloading.
+
+[Cookbook](https://valen-team.github.io/cookbook/) has executable text/image applications and sampled-frame video tagging. Those image requests passed on the prebuilt binary; **direct video remains uncompiled**. [P1 validation](https://valen-team.github.io/cookbook/validation/) records exact versions, input budgets, errors and CPU/RSS measurements. No new runtime archive or tag replaces 0.1.0.

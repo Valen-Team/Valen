@@ -4,7 +4,7 @@
 
 Training and evaluation datasets use UTF-8 JSONL: one JSON record per line, with blank lines ignored. The reader loads the whole file into memory at once, and an empty file raises an error. The examples below are expanded for readability; collapse each record onto a single line when writing `.jsonl`. Ready-to-use files are in [data/smoke](../data/smoke/).
 
-Inference accepts request objects directly: SystemOne uses `state` and a question mapping, while Decisions uses `input` and a question list. See [inference protocols](decisions.md), the [Transformers notebook](../cookbook/local_inference.ipynb) and [ONNX / SDKs](onnx.md). This page describes training and evaluation data files.
+Inference accepts request objects directly: SystemOne uses `state` and a question mapping, while Decisions uses `input` and a question list. See [inference protocols](decisions.md), the [local inference tutorial](https://valen-team.github.io/cookbook/local-inference/) and [ONNX / SDKs](onnx.md). This page describes training and evaluation data files.
 
 ```json
 {

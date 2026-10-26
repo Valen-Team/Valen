@@ -10,7 +10,7 @@
 | Valen-Team vLLM 镜像 | 已配置 NVIDIA Container Toolkit 的 Docker | [vLLM 镜像](../serving/vllm/docker/README_zh.md) |
 | vLLM 插件 | 兼容的官方 vLLM 环境 | [vLLM 插件部署包](../serving/vllm/README_zh.md) |
 
-以上 GPU 部署方式均提供 `/v1/systemone` 和 `/v1/decisions`，支持单 GPU 文本与图片的判断、选择和评分。直接视频推理可使用 [Transformers](../cookbook/local_inference_zh.ipynb) 或 [ONNX SDK](onnx_zh.md)。
+以上 GPU 部署方式均提供 `/v1/systemone` 和 `/v1/decisions`，支持单 GPU 文本与图片的判断、选择和评分。直接视频推理可使用 [Transformers](https://valen-team.github.io/zh-Hans/cookbook/local-inference/) 或 [ONNX SDK](onnx_zh.md)。
 
 SGLang 默认使用 `30000` 端口，vLLM 默认使用 `8000`。
 
@@ -33,4 +33,4 @@ HTTP 图片/视频须使用内嵌 base64 data URL，不能将本地文件路径�
 
 ## 直接在应用中推理
 
-不启动 HTTP 服务时，可使用 [Transformers Notebook](../cookbook/local_inference_zh.ipynb) 或 [ONNX / SDK 指南](onnx_zh.md)。Python SDK 支持 CPU / CUDA；JavaScript 支持 Node.js CPU 与浏览器 WebGPU；C++ 提供 SystemOne 文本 FP32 CPU 集成。
+不启动 HTTP 服务时，可使用 [本地推理教程](https://valen-team.github.io/zh-Hans/cookbook/local-inference/) 或 [ONNX / SDK 指南](onnx_zh.md)。Python SDK 支持 CPU / CUDA；JavaScript 支持 Node.js CPU 与浏览器 WebGPU；C++ 提供 SystemOne 文本 FP32 CPU 集成。

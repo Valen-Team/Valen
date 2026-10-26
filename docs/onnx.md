@@ -31,40 +31,19 @@ python -m pip install ".[onnx]"
 python examples/local_decisions.py
 ```
 
-The first example asks three questions about the same customer message:
+A minimal path check:
 
 ```python
 from valen_sdk import Valen
 
 with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
-    result = client.decisions(
-        input="I moved. Please ship my order to 12 Elm Street instead.",
-        questions=[
-            {"name": "intent", "type": "choice", "instructions": "What does the customer want?",
-             "choices": [{"value": "address", "description": "Change the delivery address"},
-                         {"value": "cancel", "description": "Cancel the order"}]},
-            {"name": "change_address", "type": "predicate",
-             "instructions": "The customer requests a delivery address change."},
-            {"name": "explicitness", "type": "score", "instructions": "How explicit is the request?",
-             "levels": [{"label": "none", "description": "No request"},
-                        {"label": "possible", "description": "Asks whether a change is possible"},
-                        {"label": "explicit", "description": "Explicitly requests a change"}]},
-        ],
-    )
-    print("Intent:", result.by_name("intent").choice)
-    print(f"Address change probability: {result.by_name('change_address').probability:.3f}")
-    print(f"Explicitness score (0–2): {result.by_name('explicitness').score:.3f}")
+    result = client.decisions(input="A cat is on the sofa.", questions=[
+        {"name": "cat", "type": "predicate", "instructions": "A cat is present."},
+    ])
+    print(result.by_name("cat").probability)
 ```
 
-Example output with 0.8B FP32:
-
-```text
-Intent: address
-Address change probability: 0.998
-Explicitness score (0–2): 1.921
-```
-
-Use the category for routing, the 0–1 probability to select requests for review, and the score to rank them. A score is the probability-weighted mean of zero-based level indices; these three levels span 0–2. Exact outputs may vary with precision.
+Complete ticket routing, image screening, video tagging and measured outputs are maintained in the [official Cookbook](https://valen-team.github.io/cookbook/). This page owns installation, backend options and minimal calls. `Valen.local` loads ONNX; use `Valen.remote` for a GGUF service.
 
 ## Models and variants
 

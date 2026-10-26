@@ -1,0 +1,40 @@
+name: Backend protocol contract
+on:
+  push:
+    paths: ['valen/decisions.py', 'serving/**', 'scripts/validation/**', 'tests/fixtures/**', '.github/workflows/backend-contract.yml']
+  pull_request:
+    paths: ['valen/decisions.py', 'serving/**', 'scripts/validation/**', 'tests/fixtures/**', '.github/workflows/backend-contract.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  adapters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Valen-Team/valen-sdk-python
+          ref: 2194dcf5fdf548ca52298842071721602ff5b125
+          path: sdk-python
+      - uses: actions/checkout@v4
+        with:
+          repository: Valen-Team/valen-sdk-js
+          ref: 2e4972d2d3c9a522b2a376361a74f05744f071c5
+          path: sdk-js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk-js/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: sdk-js
+      - run: python scripts/validation/check_protocols.py --python-sdk-dir sdk-python --javascript-sdk-dir sdk-js --output validation-output/synthetic-adapters.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-adapter-results
+          path: validation-output/

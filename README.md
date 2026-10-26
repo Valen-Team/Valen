@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="cookbook/api_quickstart.ipynb">Cookbook</a>
+  <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="https://valen-team.github.io/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
 <a id="version-selection"></a>
@@ -50,7 +50,7 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 - **2026-10-21**: The [web chat](https://valen-team.github.io/) and [bilingual documentation](https://valen-team.github.io/docs/) are live, with a [free decision API](#api-usage) requiring no key.
 - **2026-10-18**: Released [JevalKit](https://github.com/Valen-Team/JevalKit), an open-source evaluation toolkit for Jev-like decision models, providing unified model interfaces and prepared evaluation datasets. The [🤗 JevalKit Leaderboard](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard).
 - **2026-10-13**: Released ONNX and GGUF versions of Valen models, available on [Hugging Face](https://huggingface.co/Valen-Team).
-- **2026-10-13**: Added API access to `valen-preview-0923`, `valen-0-8b`, `valen-2b` and `valen-4b`. See the [API quick start notebook](cookbook/api_quickstart.ipynb) for usage examples.
+- **2026-10-13**: Added API access to `valen-preview-0923`, `valen-0-8b`, `valen-2b` and `valen-4b`. See the [API basics tutorial](https://valen-team.github.io/cookbook/api-quickstart/) for usage examples.
 - **2026-10-07**: **Faster, more accurate, more versatile.** Released the latest multimodal System One model **Valen ([0.8B](https://huggingface.co/Valen-Team/Valen-0.8B), [2B](https://huggingface.co/Valen-Team/Valen-2B) and [4B](https://huggingface.co/Valen-Team/Valen-4B))**, supporting text, images and video, and the [**VisualDecisionBench**](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) benchmark.
 - **2026-09-30**: **Training&Inference Support:** Added Flash Attention 2 support, enabled training across multiple nodes and GPUs, and improved GPU memory utilization during training.
 - **2026-09-23**: Open-sourced the **Valen** repository and released [**Valen-preview-0923**](https://huggingface.co/Valen-Team/Valen-Preview-0923) with its corresponding [**training data**](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k).
@@ -135,7 +135,7 @@ Earlier results remain in the [archived README](history/README_preview.md).
 
 ## Quick start
 
-For a local HTTP service, start with the [local deployment guide](docs/inference.md). For Python examples, use the Cookbook notebooks: **[API quick start](cookbook/api_quickstart.ipynb)** · **[Transformers local inference](cookbook/local_inference.ipynb)**. Both use real evaluation cases with input previews, executable cells and saved results. 简体中文：[API 入门](cookbook/api_quickstart_zh.ipynb) · [下载与本地推理](cookbook/local_inference_zh.ipynb).
+For a local HTTP service, start with the [deployment guide](docs/inference.md). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
 
 <a id="api-usage"></a>
 

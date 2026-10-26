@@ -10,7 +10,7 @@ Choose a deployment route:
 | Valen-Team vLLM image | Docker with NVIDIA Container Toolkit | [vLLM image](../serving/vllm/docker/README.md) |
 | vLLM plugin | A compatible official vLLM environment | [vLLM plugin kit](../serving/vllm/README.md) |
 
-The GPU routes above expose `/v1/systemone` and `/v1/decisions` for single-GPU text/image predicate, choice, and score decisions. For direct video inference, use [Transformers](../cookbook/local_inference.ipynb) or the [ONNX SDKs](onnx.md).
+The GPU routes above expose `/v1/systemone` and `/v1/decisions` for single-GPU text/image predicate, choice, and score decisions. For direct video inference, use [Transformers](https://valen-team.github.io/cookbook/local-inference/) or the [ONNX SDKs](onnx.md).
 
 SGLang defaults to port `30000`; vLLM defaults to port `8000`.
 
@@ -33,4 +33,4 @@ HTTP images/video must use inline base64 data URLs; local file paths cannot be u
 
 ## Inference inside an application
 
-To run without an HTTP server, use the [Transformers notebook](../cookbook/local_inference.ipynb) or the [ONNX / SDK guide](onnx.md). Python supports CPU / CUDA, JavaScript supports Node.js CPU and browser WebGPU, and C++ provides a SystemOne text FP32 CPU integration.
+To run without an HTTP server, use the [local inference tutorial](https://valen-team.github.io/cookbook/local-inference/) or the [ONNX / SDK guide](onnx.md). Python supports CPU / CUDA, JavaScript supports Node.js CPU and browser WebGPU, and C++ provides a SystemOne text FP32 CPU integration.

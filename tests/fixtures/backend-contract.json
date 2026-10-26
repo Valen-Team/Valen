@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "temperature": 1.0,
+  "cases": [
+    {"id": "text", "input": "I moved. Please ship my order to 12 Elm Street instead.", "questions": [
+      {"name": "intent", "type": "choice", "instructions": "What does the customer want?", "choices": [
+        {"value": "address", "description": "Change the delivery address"},
+        {"value": "cancel", "description": "Cancel the order"}
+      ]},
+      {"name": "change_address", "type": "predicate", "instructions": "The customer requests a delivery address change."},
+      {"name": "explicitness", "type": "score", "instructions": "How explicit is the request?", "levels": [
+        {"label": "none", "description": "No request"},
+        {"label": "possible", "description": "Asks whether a change is possible"},
+        {"label": "explicit", "description": "Explicitly requests a change"}
+      ]}
+    ]},
+    {"id": "typed-choice", "input": "A cat is on the sofa.", "questions": [
+      {"name": "animal", "type": "choice", "instructions": "Which candidate describes the animal?", "choices": [
+        {"value": true, "description": "A cat"}, {"value": "true", "description": "A dog"},
+        {"value": false, "description": "A horse"}, {"value": "false", "description": "A sheep"}
+      ]}
+    ]},
+    {"id": "image", "input": [{"role": "user", "content": [{"type": "input_image", "image_url": "$IMAGE_DATA"}]}], "questions": [
+      {"name": "red", "type": "predicate", "instructions": "Is red visible?"},
+      {"name": "color", "type": "choice", "instructions": "Which color is most visible?", "choices": [
+        {"value": "red", "description": "Red"}, {"value": "blue", "description": "Blue"}, {"value": "green", "description": "Green"}
+      ]},
+      {"name": "brightness", "type": "score", "instructions": "How bright is the image?", "levels": [
+        {"label": "dark", "description": "Dark"}, {"label": "bright", "description": "Bright"}
+      ]}
+    ]},
+    {"id": "video", "input": [{"role": "user", "content": [{"type": "input_video", "video_url": "$VIDEO_DATA"}]}], "questions": [
+      {"name": "red", "type": "predicate", "instructions": "Is red visible?"},
+      {"name": "color", "type": "choice", "instructions": "Which color is most visible?", "choices": [
+        {"value": "red", "description": "Red"}, {"value": "blue", "description": "Blue"}, {"value": "green", "description": "Green"}
+      ]},
+      {"name": "brightness", "type": "score", "instructions": "How bright is the video?", "levels": [
+        {"label": "dark", "description": "Dark"}, {"label": "bright", "description": "Bright"}
+      ]}
+    ]}
+  ],
+  "invalid": [
+    {"id": "empty-questions", "body": {"input": "A cat", "questions": []}},
+    {"id": "zero-temperature", "body": {"input": "A cat", "temperature": 0, "questions": [{"name": "q", "type": "predicate", "instructions": "A cat?"}]}},
+    {"id": "boolean-temperature", "body": {"input": "A cat", "temperature": true, "questions": [{"name": "q", "type": "predicate", "instructions": "A cat?"}]}},
+    {"id": "duplicate-names", "body": {"input": "A cat", "questions": [{"name": "q", "type": "predicate", "instructions": "A cat?"}, {"name": "q", "type": "predicate", "instructions": "A dog?"}]}},
+    {"id": "numeric-choice", "body": {"input": "A cat", "questions": [{"name": "q", "type": "choice", "instructions": "Animal?", "choices": [{"value": 1, "description": "Cat"}]}]}}
+  ]
+}

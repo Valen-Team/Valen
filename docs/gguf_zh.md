@@ -40,7 +40,7 @@ curl --fail http://127.0.0.1:8080/v1/systemone \
   -d '{"state":{"messages":[{"role":"user","content":"The film was excellent."}]},"questions":{"sentiment":{"type":"choice","instructions":"Classify the sentiment.","criteria":{"positive":"Positive","negative":"Negative"}}}}'
 ```
 
-返回结构化候选概率，而不是生成文本。请求必须容纳于上下文和 batch 容量中。预编译包只声明新验证过的文本服务；图片与视频的既有源码验证不能代替此包的验证，视频未编入此包。其他尺寸替换模型文件，不能混用视觉模块。
+返回结构化候选概率，而不是生成文本。请求必须容纳于上下文和 batch 容量中。原发布只验证文本服务。P1 另外使用缓存 0.8B Q8_0 对同一个预编译包完成固定图片检查，见[实测范围与保留的失败](https://valen-team.github.io/zh-Hans/cookbook/validation/)。直接视频未编入此包，源码视频验证不能代替预编译包资格。其他尺寸替换模型文件，不能混用视觉模块。
 
 源码 pin、补丁、许可证和源码构建/Ollama 说明由各模型仓库提供：
 
@@ -61,4 +61,10 @@ curl --fail http://127.0.0.1:8080/v1/systemone \
 | Compiler | GCC 11.4 / Ubuntu 22.04 |
 | License | llama.cpp MIT + Valen patches Apache-2.0; notices and source included |
 
-最终压缩包已在集群解压，逐文件校验并通过 0.8B Q8_0 真实文本请求；两次请求答案相同，解压后的结果也一致。没有重新下载模型。该包仅声明此文本验证范围；其他尺寸的既有源码验证见各模型卡。首次试用已有原生预编译包，不要求 Docker；本次不新增 Docker 镜像。
+最终压缩包已在集群解压，逐文件校验并通过 0.8B Q8_0 真实文本请求；两次请求答案相同，解压后的结果也一致。没有重新下载模型。原文本检查保持不变，新增 P1 固定图片证据见上方链接；其他尺寸的既有源码验证见各模型卡。首次试用已有原生预编译包，不要求 Docker；本次不新增 Docker 镜像。
+
+## P1 图片验证
+
+P1 复用同一个解压运行包、缓存的 0.8B Q8_0 和同尺寸已发布的 `vision-native-limits-F32.gguf`。在上述启动命令中增加 `--mmproj /your/cache/vision-native-limits-F32.gguf --no-mmproj-offload --image-min-tokens 64 --image-max-tokens 256`；模型和视觉模块尺寸必须一致。已测 0.8B 视觉文件 SHA256 为 `db28fe68408846202ad9dd8ac71c4f43df7d8665e0d94422fa1e91e3029fe03b`。优先复用缓存、核对服务端元数据后再决定是否下载。
+
+[Cookbook](https://valen-team.github.io/zh-Hans/cookbook/) 提供可运行的文本/图片应用与视频抽帧标注。这些图片请求在预编译包中通过，**直接视频仍未编译支持**。[P1 验证](https://valen-team.github.io/zh-Hans/cookbook/validation/)记录版本、输入预算、错误与 CPU/RSS 实测。没有替换 0.1.0 运行包或 tag。
