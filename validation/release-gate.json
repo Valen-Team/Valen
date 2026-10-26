@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "completed": true,
+  "passed": true,
+  "date": "2026-10-26",
+  "website_commit": "82c887cd9defca1fe7ff53aba5eb0fcfa2543b4f",
+  "fixture_sha256": "12c282a0e51ef430306ccb7a9dcca62d1cb0b1e0e683872e023d4fc04a8e7e10",
+  "source_sha256": {
+    "valen/decisions.py": "a1b382ddd52a3dac0e927ff791967af02367a26c26fe0bc63c26d5d805c79312",
+    "serving/sglang/src/valen_sglang/decisions.py": "a1b382ddd52a3dac0e927ff791967af02367a26c26fe0bc63c26d5d805c79312",
+    "serving/vllm/src/valen_vllm/decisions.py": "a1b382ddd52a3dac0e927ff791967af02367a26c26fe0bc63c26d5d805c79312",
+    "tests/fixtures/backend-contract.json": "12c282a0e51ef430306ccb7a9dcca62d1cb0b1e0e683872e023d4fc04a8e7e10",
+    "scripts/validation/benchmark_backends.py": "f447d298876449ac47b39501ef37dc2a239bbee4cfef34b76a8207f9704b463b",
+    "scripts/validation/benchmark_server.py": "3775c7e959865d530b95c98c25b7bc291ee117c3f175a58fedcb0ed654b90854",
+    "scripts/validation/check_backends.py": "66e036c071a9fdc1a83097decbfeb7fbf90c90cac16a4471483be8a80f49f987",
+    "scripts/validation/check_protocols.mjs": "94a99858c240a1c55a980bb999a65d4b2103864c0c78e715ac819dbf50450de1",
+    "scripts/validation/check_protocols.py": "ca18894cece827de241851c00438a8df5e7103988e185b5d381503d7f1dbf889",
+    "scripts/validation/check_sdk_http.mjs": "aa28bccdb259aeaf83bfa61fb8203dc2b95fe0b45d7febf9a2e7b85b4545e39a",
+    "scripts/validation/check_sdk_http.py": "6f73df8ebdebf422dd645176dca5c9936d9af0e5c8036aaf3eacda8813316135",
+    "scripts/validation/validate_release_report.py": "33553096601511c85e3171fc4d645a82f486c43c4dc4f55f5fdd07e19615be58"
+  },
+  "evidence_sha256": {
+    "versions.json": "9cdf1892934a6ba8d59d4e301c6c201dd58358b478ce7bb81877d8ec1993b3c7",
+    "results.json": "9e3d0ab328df14aab23f332204d61549cc23a2e0152d30fbb00ce440ba71c67f",
+    "validation/performance.json": "857d2b48f339f2c0da7f98fab3098d4f06d223c95ba0eb548005d3e33c33ff42",
+    "validation/cross-backend.json": "0ac5154bd9c3de7c5e5901b82bd458b979ca06dc13e0e88ad1c309922e5ecc92",
+    "validation/release-checks.json": "1cba26f3ee0f4d4151970536ea8bc878221ffa20d35655c07a2ad66fb3408ec9",
+    "validation/preserved-failures.json": "d0750b32741240e8678c2452135a610277c01cb4b3ba593d7a90c06cb2f0d7bd",
+    "validation/runtime-integrity.json": "e666bd7721936c8794e8ca28a15c59a82b66b69bec2d21c5c1cc199e6ee0049f",
+    "validation/native-fp32-contract.json": "5449409d6dbe0a5cb707a74bca9f943a7552f2134e284859c9dccff1fef1fb9f",
+    "validation/onnx-fp32-contract.json": "ccb01e8d1d499acd2b6c7678315dbf599c72acc9cf46f88ddf850ebdd79cf911",
+    "validation/onnx-production-contract.json": "f91f0def48cc88d1423ab10e20cd85961d9f66a3ab9371abfa9284e2cc07cd15",
+    "validation/gguf-prebuilt-contract.json": "375210956bc58c6d503e19f4f87f4b075ee38c739ba4cd5d6aff20736e12aa69",
+    "validation/gguf-source-video-contract.json": "82863b27a8e43342ecc5f7bc26a8d1b0443d9ccadd67845aa2f1b13f48471005",
+    "validation/onnx-production-python-sdk.json": "f5d9f14cc4aec739f5434dfef58ff1448f934a340bde79796447711d2e4e4395",
+    "validation/onnx-production-javascript-sdk.json": "03f6cf3423632988dd223324da8d32fdb38a91da6739697a93c4a20cc43417e9",
+    "validation/gguf-prebuilt-python-sdk.json": "f9bd450ad281b7fe47913cf24d9eff5d588304718f3ab35625b54658df66f349",
+    "validation/gguf-prebuilt-javascript-sdk.json": "c126909e8dcb0661b5e77e8771bb992615da91181e58729c47d7bf33b0385fee",
+    "validation/gguf-source-video-python-sdk.json": "687302167f93806d96059e9ad0d73715a75ace16259d862f2a7d97aeb8de2e82",
+    "validation/gguf-source-video-javascript-sdk.json": "6c7a3064d1622b3c451558d90d4ac0f21d5355b8052dd49f10a3177ca7a93f9f",
+    "code/local_inference.py": "fef799ea6e23b9f88d319ffd904bc9d647400068a91a1f1c5b21a6ca7e872de0",
+    "code/video_tagging.py": "96fcb8ebe5ed3d215958988e1ac215cc7db4e172bf272a52053c5e2fb24be4ea",
+    "code/requirements.txt": "98bb3f831215f8b3b7db6a80b250df025c4b4fcecf55750031e900dd2b7117e2",
+    "code/product_screening.py": "3d74988fd8e716be82ca0474aad4691d5b8bd32ac8ce26dd0ecf8e03d6d17a64",
+    "code/LICENSE.txt": "a5149b34d460bb6cc884edce31801808973543f065c3a67de728e0f615ef8cfb",
+    "code/common.py": "9217eeeb63f4102b11655d54f481c2cc36b6f806f4e29508bfdabcb5a3f0379f",
+    "code/ticket_routing.py": "f8e9f8227b6398a717e5d3f8a3b4e03447aca164d1dbb5df0ca873ddd2eb39a8",
+    "code/api_quickstart.py": "30c083c4d5e4104d2866140f960123e82d92a5df3ca2b58211e3c18001cb44e5",
+    "code/samples.json": "fbb388e593a82de72d4d9dff2175309790af7471d8c9f88a205ae83c803d520c"
+  },
+  "qualified_scope": "P1 0.8B CPU fixed-fixture and Cookbook validation; eight successful same-worker performance combinations",
+  "excluded_failure": "Prebuilt GGUF 0.1.0 direct video not compiled; original failed probe preserved; source-build video is separate",
+  "registry_versions_unchanged": {
+    "python": "valen-sdk==0.2.0",
+    "javascript": "@valen-team/sdk@0.2.0",
+    "javascript_source_tag": "npm-v0.2.0",
+    "runtime": "gguf-runtime-v0.1.0"
+  },
+  "real_validation_runs": [
+    {
+      "name": "valen-p1-261026-173234",
+      "remote": "/mnt/shared-storage-user/mllm/zangyuhang/valen/runs/valen-p1-261026-173234"
+    },
+    {
+      "name": "valen-p1-followup-261026-180729",
+      "remote": "/mnt/shared-storage-user/mllm/zangyuhang/valen/runs/valen-p1-followup-261026-180729"
+    }
+  ]
+}
