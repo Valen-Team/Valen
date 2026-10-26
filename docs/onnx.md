@@ -1,6 +1,6 @@
 # ONNX inference and SDKs
 
-Stable SDK 0.2.0 installs from its GitHub release/tag; it is not yet published on PyPI/npm. For a first trial and format selection, see [version selection](https://valen-team.github.io/docs/valen/choosing/).
+Python SDK 0.2.0 is published on [PyPI](https://pypi.org/project/valen-sdk/0.2.0/). JavaScript SDK 0.2.0 installs from its GitHub release/tag; npm publication is still pending. For a first trial and format selection, see [version selection](https://valen-team.github.io/docs/valen/choosing/).
 
 **English** · [简体中文](onnx_zh.md)
 

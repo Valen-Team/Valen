@@ -388,10 +388,10 @@ The first load caches native model weights. Once cached, add `local_files_only=T
 
 Run inference in your application with ONNX Runtime, without installing PyTorch or Transformers. Python supports CPU / NVIDIA CUDA, JavaScript / TypeScript supports Node.js CPU and browser WebGPU, and C++ currently provides a SystemOne text FP32 CPU integration.
 
-Local Python inference needs Python 3.11+ and Git; HTTP-only clients support Python 3.10+. Python downloads the full selected variant on first use, such as about 3.505 GB for 0.8B FP32, and reuses the cache on later runs. A local model directory also works.
+Local Python inference needs Python 3.11+; HTTP-only clients support Python 3.10+. Python downloads the full selected variant on first use, such as about 3.505 GB for 0.8B FP32, and reuses the cache on later runs. A local model directory also works.
 
 ```bash
-python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
+python -m pip install "valen-sdk[onnx]==0.2.0"
 ```
 
 ```python

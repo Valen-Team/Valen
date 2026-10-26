@@ -76,7 +76,7 @@ Published ONNX models use `ValenONNXEngine` with the same upstream runner and sc
 
 ```bash
 python -m pip install \
-  "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0" \
+  "valen-sdk[onnx]==0.2.0" \
   "decision-index @ git+https://github.com/apolinario/decision-index.git@f5a6e4fd85fed05e77878dfc4966d0568bfb45ec"
 python -m evaluation.decision_index pipeline \
   --edition 0.3 \

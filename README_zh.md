@@ -388,10 +388,10 @@ print(answer["answers"])
 
 使用 ONNX Runtime 在自己的应用中推理，无需安装 PyTorch 或 Transformers。Python 支持 CPU / NVIDIA CUDA，JavaScript / TypeScript 支持 Node.js CPU 与浏览器 WebGPU；C++ 当前提供 SystemOne 文本 FP32 CPU 集成。
 
-本地 Python 推理需要 Python 3.11+ 和 Git；仅 HTTP 客户端支持 Python 3.10+。Python 首次加载会下载完整的所选变体，例如 0.8B FP32 约 3.505 GB；后续复用缓存，也可传入本地模型目录。
+本地 Python 推理需要 Python 3.11+；仅 HTTP 客户端支持 Python 3.10+。Python 首次加载会下载完整的所选变体，例如 0.8B FP32 约 3.505 GB；后续复用缓存，也可传入本地模型目录。
 
 ```bash
-python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
+python -m pip install "valen-sdk[onnx]==0.2.0"
 ```
 
 ```python

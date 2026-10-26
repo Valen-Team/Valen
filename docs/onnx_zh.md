@@ -1,6 +1,6 @@
 # ONNX 推理与 SDK
 
-稳定 SDK 0.2.0 使用 GitHub release/tag 安装；当前并未发布到 PyPI/npm。首次体验与格式选择见[版本选择](https://valen-team.github.io/zh-Hans/docs/valen/choosing/)。
+Python SDK 0.2.0 已发布到 [PyPI](https://pypi.org/project/valen-sdk/0.2.0/)；JavaScript SDK 0.2.0 使用 GitHub release/tag 安装，尚未发布到 npm。首次体验与格式选择见[版本选择](https://valen-team.github.io/zh-Hans/docs/valen/choosing/)。
 
 [English](onnx.md) · **简体中文**
 

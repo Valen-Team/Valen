@@ -21,7 +21,7 @@ SGLang 默认使用 `30000` 端口，vLLM 默认使用 `8000`。
 在独立环境中安装 Python SDK；需要 Python 3.11+ 和 Git，无需安装主仓库的训练依赖。以下命令使用 CPU：
 
 ```bash
-python -m pip install "valen-sdk[onnx,server] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
+python -m pip install "valen-sdk[onnx,server]==0.2.0"
 valen serve --model Valen-Team/Valen-0.8B-ONNX --model-name valen --port 8000
 ```
 
@@ -29,7 +29,7 @@ valen serve --model Valen-Team/Valen-0.8B-ONNX --model-name valen --port 8000
 
 应用中使用 `Valen.remote("http://127.0.0.1:8000/v1", model="valen")`；JavaScript 使用同名 `Valen.remote` 工厂。仅 HTTP 客户端不需要 ONNX Runtime 或本地模型权重。详见 [ONNX 与 SDK](onnx_zh.md) 和 [Python SDK](https://github.com/Valen-Team/valen-sdk-python)。
 
-HTTP 图片/视频须使用内嵌 base64 data URL，不能将本地文件路径作为 HTTP 媒体地址。视频还需安装 `python -m pip install "valen-sdk[video] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"`；直接 SDK 调用可以读取本地媒体路径。
+HTTP 图片/视频须使用内嵌 base64 data URL，不能将本地文件路径作为 HTTP 媒体地址。视频还需安装 `python -m pip install "valen-sdk[video]==0.2.0"`；直接 SDK 调用可以读取本地媒体路径。
 
 ## 直接在应用中推理
 
