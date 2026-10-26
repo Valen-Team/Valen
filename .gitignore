@@ -27,6 +27,9 @@ htmlcov/
 /next-generation/
 /next-generation-exp/
 /next-generation-qwen/
+/next-generation-det/
+/next-generation-seg/
+/next-generation-gui/
 /JevBench-exp/
 /models/
 /artifacts/

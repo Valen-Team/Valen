@@ -42,6 +42,9 @@ def target_distribution(target, keys):
 
 
 def validate_record(record, candidate_fn=candidates):
+    if any(q.get("type") in {"det", "seg", "gui"} for q in record["request"]["questions"].values()):
+        from .spatial import validate_spatial_record
+        return validate_spatial_record(record)
     request = record["request"]
     state = request["state"]
     if not isinstance(state, (str, dict)):

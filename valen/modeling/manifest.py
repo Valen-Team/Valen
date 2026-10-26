@@ -32,7 +32,7 @@ def read_base_manifest(model_path):
 def read_model_manifest(config):
     from valen.configuration import flatten_config
     config = flatten_config(config)
-    if config.get("architecture", "qwen") == "qwen":
+    if config.get("architecture", "qwen") in {"qwen", "qwen_spatial"}:
         return read_base_manifest(config["model_path"])
     result = {"architecture": "dual_encoder"}
     for role in ("text", "vision"):

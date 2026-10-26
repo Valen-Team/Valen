@@ -57,6 +57,9 @@ def normalize_config(config):
 
 
 def run(config, resume=None, initialize=None):
+    if normalize_model_config(config)["architecture"] == "qwen_spatial":
+        from .spatial import run as run_spatial
+        return run_spatial(config, resume, initialize)
     config = normalize_config(config)
     if resume and initialize:
         raise ValueError("Use either resume or initialize")

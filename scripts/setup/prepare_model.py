@@ -8,12 +8,16 @@ from huggingface_hub import HfApi, snapshot_download
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--repo", default="Qwen/Qwen3.5-2B", help="Official Qwen3.5 multimodal repository")
     parser.add_argument("--output", default="models/Qwen3.5-2B")
-    parser.add_argument("--revision", default="15852e8c16360a2fea060d615a32b45270f8a8fc")
+    parser.add_argument("--revision", help="Immutable revision; resolves and records the current revision when omitted")
     parser.add_argument("--verify-local", action="store_true", help="Validate already downloaded files against Hub SHA256")
     args = parser.parse_args()
-    repo = "Qwen/Qwen3.5-2B"
-    revision = HfApi().model_info(repo, revision=args.revision).sha
+    repo = args.repo
+    if not repo.startswith("Qwen/Qwen3.5-"):
+        raise ValueError("Use an official Qwen3.5 multimodal repository")
+    requested_revision = args.revision or ("15852e8c16360a2fea060d615a32b45270f8a8fc" if repo == "Qwen/Qwen3.5-2B" else None)
+    revision = HfApi().model_info(repo, revision=requested_revision).sha
     path = Path(args.output) if args.verify_local else Path(snapshot_download(repo, revision=revision, local_dir=args.output))
     import hashlib
     info = HfApi().model_info(repo, revision=revision, files_metadata=True)

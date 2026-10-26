@@ -15,6 +15,8 @@ dependencies = ["torch==2.6.0", "torchvision==0.21.0", "transformers==5.4.0", "p
 test = ["pytest==8.4.2"]
 caption-data = ["boto3>=1.34,<2"]
 experiments = ["boto3>=1.34,<2", "matplotlib>=3.8,<4"]
+spatial = ["scipy>=1.11,<2", "pycocotools>=2.0.7,<3", "datasets>=3,<5", "pyarrow>=15"]
+reasonseg = ["opencv-python-headless>=4.8,<5"]
 model-formats = ["onnx==1.19.1", "onnxruntime==1.23.2", "gguf==0.19.0"]
 decision-index = ["decision-index @ git+https://github.com/apolinario/decision-index.git@f5a6e4fd85fed05e77878dfc4966d0568bfb45ec"]
 

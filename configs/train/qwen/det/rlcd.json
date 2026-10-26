@@ -1,0 +1,32 @@
+{
+  "architecture": "qwen_spatial",
+  "task": "det",
+  "method": "rlcd",
+  "finetuning_type": "lora",
+  "lora_rank": 32,
+  "lora_alpha": 64,
+  "stage": "joint",
+  "dtype": "bf16",
+  "attn_implementation": "sdpa",
+  "gradient_checkpointing": true,
+  "required_world_size": 64,
+  "gradient_accumulation": 2,
+  "gradient_bucket_mb": 128,
+  "epochs": 1,
+  "save_every": 16,
+  "seed": 42,
+  "head_lr": 0.00005,
+  "lora_lr": 0.00005,
+  "merger_lr": 0.000005,
+  "audit_initial_update": true,
+  "rlcd": {
+    "group_size": 16,
+    "num_iterations": 2,
+    "correctness_weight": 1.0,
+    "confidence_weight": 0.1,
+    "brier_weight": 0.1,
+    "beta": 0.02,
+    "clip_epsilon": 0.2,
+    "advantage_epsilon": 0.000001
+  }
+}

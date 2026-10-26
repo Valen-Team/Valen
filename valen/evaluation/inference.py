@@ -41,6 +41,12 @@ def answer(question, logits, temperature=1.0):
 @torch.no_grad()
 def predict(model, compiled, temperature=1.0):
     model.eval()
+    if getattr(model, "architecture", None) == "qwen_spatial":
+        from valen.modeling.qwen.spatial import spatial_response
+        return {"model": model.model_name,
+                "answers": {q.qid: spatial_response(q, model(q)) for q in compiled.questions},
+                "usage": {"input_tokens": compiled.logical_tokens, "output_tokens": 0},
+                "internal_usage": {"compute_tokens": compiled.compute_tokens}}
     decisions = [d for unit in backend_for_model(model).inference_units(model, compiled) for d in unit]
     def calibrated(q):
         return temperature[q.kind] if isinstance(temperature, dict) else temperature
@@ -54,6 +60,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data", required=True)
+    parser.add_argument("--data-root", help="Resolve media paths against this directory")
     parser.add_argument("--output", required=True)
     parser.add_argument("--calibration")
     parser.add_argument("--device", default="cuda")
@@ -65,10 +72,12 @@ def main():
     config = with_attention_implementation(config, args.attn_implementation)
     config["device"] = args.device
     config["gradient_checkpointing"] = False
+    if args.data_root:
+        config["data_root"] = args.data_root
     model = build_model(config)
     load_checkpoint(args.checkpoint, model)
     backend = get_backend(config["architecture"])
-    compiler = build_compiler(config, Path(args.data).parent)
+    compiler = build_compiler(config, args.data_root or Path(args.data).parent)
     records = read_jsonl(args.data, candidate_fn=backend.candidates)
     temperature = json.loads(Path(args.calibration).read_text(encoding="utf-8"))["temperature"] if args.calibration else 1.0
     with Path(args.output).open("w", encoding="utf-8") as output:

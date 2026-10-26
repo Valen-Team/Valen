@@ -1,9 +1,10 @@
 """Single architecture dispatch point for model, compiler and execution policy."""
 from .qwen.backend import QwenBackend
 from .dual_encoder.backend import DualEncoderBackend
+from .qwen.spatial_backend import SpatialBackend
 from valen.configuration import flatten_config
 
-BACKENDS = {backend.name: backend for backend in (QwenBackend(), DualEncoderBackend())}
+BACKENDS = {backend.name: backend for backend in (QwenBackend(), DualEncoderBackend(), SpatialBackend())}
 
 
 def get_backend(architecture="qwen"):
@@ -35,6 +36,13 @@ def normalize_model_config(config):
             config["qwen_execution"] = "shared_state"
         if config["qwen_execution"] not in ("question", "shared_state"):
             raise ValueError("qwen_execution must be question or shared_state")
+    elif config["architecture"] == "qwen_spatial":
+        from .qwen.spatial import spatial_signature
+        spatial_signature(config)
+        if config.setdefault("finetuning_type", "lora") not in ("lora", "full"):
+            raise ValueError("finetuning_type must be lora or full")
+        if "qwen_execution" in config:
+            raise ValueError("Spatial readouts do not use qwen_execution")
     elif "qwen_execution" in config:
         raise ValueError("qwen_execution requires architecture=qwen")
     return config
