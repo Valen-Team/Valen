@@ -1,0 +1,37 @@
+{
+  "version": "0.1.0",
+  "artifact": "valen-gguf-runtime-0.1.0-linux-x86_64.tar.gz",
+  "bytes": 31797146,
+  "sha256": "2fcc903eb853b8c04498bb4ee716c7c3662d1d07eb5c2d89c11310716ae04c0e",
+  "source": {
+    "llama_cpp_base": "1a0b56cec73dac938e0602c974b21dc8e2862830",
+    "ollama_base": "d44c2581904a98430e348d89cc2af1529b1808a0",
+    "patch_sha256": "20c8fcb50920ae8e96b158c30c277ab384fb9716d8d51fb01966b562b8e57732",
+    "ollama_patch_sha256": "294f3aa7e73d3da6b9e9de40d364210d924a31af2595606ac039de4fa0428b01",
+    "status": "custom runtime; llama.cpp measured; custom Ollama Go build, tests and real F32/Q8 imports/text/image/video/protocol/isolation validated on CPU; no unmodified upstream support"
+  },
+  "compiler": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
+  "validated": {
+    "passed": true,
+    "archive_sha256": "2fcc903eb853b8c04498bb4ee716c7c3662d1d07eb5c2d89c11310716ae04c0e",
+    "all_internal_hashes_match": true,
+    "libraries_from_extracted_package": true,
+    "answers": {
+      "sentiment": {
+        "type": "choice",
+        "choice": "positive",
+        "probabilities": {
+          "positive": 0.9997288261216173,
+          "negative": 0.00027117387838261755
+        },
+        "confidence": 0.9994576522432346
+      }
+    },
+    "model": "cached 0.8B Q8_0",
+    "no_model_download": true,
+    "scope": "Ubuntu 22.04 Linux x86-64 CPU text; no media/GPU/other platform claim"
+  },
+  "model_bytes_downloaded_to_client": 0,
+  "artifact_uploaded_from": "cluster",
+  "video_enabled": false
+}

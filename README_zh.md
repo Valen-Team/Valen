@@ -33,9 +33,17 @@
 
 Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) 启发，它根据任务指令，对文本、图像和视频中的信息进行判断，直接输出给定候选的概率分布，为程序提供结构化的决策接口。仓库提供模型实现、数据处理、SFT 与实验性 RLCD 训练，以及推理和评估命令，支持使用自有数据训练。
 
+<a id="version-selection"></a>
+
+## 版本选择
+
+首次体验使用[网页或免费 API](https://valen-team.github.io/)，无需下载模型。[应该选择哪个版本？](docs/choosing_zh.md) · [GGUF 本地服务](docs/gguf_zh.md)
+
 <a id="news"></a>
 
 ## 最新动态
+
+- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；使用 [Valen 定制 CPU 运行包](docs/gguf_zh.md)。官方未修改 llama.cpp/Ollama 不视为支持。
 
 - **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](docs/onnx_zh.md)。
 
@@ -51,12 +59,12 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 模型与数据集
 
-| 模型 | 原生权重 / Transformers | ONNX Runtime |
-| --- | --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) |
-| Valen-preview-0923（早期版本） | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — |
+| 模型 | 原生权重 / Transformers | ONNX Runtime | GGUF / 定制运行时 |
+| --- | --- | --- | --- |
+| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
+| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
+| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
+| Valen-preview-0923（早期版本） | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) 包含 Image 和 Video 两个子集，用于图像与视频决策评测。此前发布的 [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) 用于训练，[General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) 用于评测，[Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) 用于游戏训练与评测。
 
@@ -221,6 +229,7 @@ Key 只保存在服务端环境变量中。
 
 | 需求 | 推荐入口 |
 | --- | --- |
+| C++ Linux CPU HTTP / GGUF | [Valen 定制 llama-server](docs/gguf_zh.md) |
 | Python CPU / NVIDIA CUDA、Node.js 或浏览器应用 | [ONNX 与 SDK](docs/onnx_zh.md) |
 | 原生 PyTorch / Transformers 模型 | [Transformers](#transformers) |
 | GPU HTTP 服务 | [SGLang](serving/sglang/README_zh.md) · [vLLM](serving/vllm/README_zh.md) |
@@ -382,7 +391,7 @@ print(answer["answers"])
 本地 Python 推理需要 Python 3.11+ 和 Git；仅 HTTP 客户端支持 Python 3.10+。Python 首次加载会下载完整的所选变体，例如 0.8B FP32 约 3.505 GB；后续复用缓存，也可传入本地模型目录。
 
 ```bash
-python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git"
+python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
 ```
 
 ```python

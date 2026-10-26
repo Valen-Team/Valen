@@ -1,5 +1,7 @@
 # ONNX 推理与 SDK
 
+稳定 SDK 0.2.0 使用 GitHub release/tag 安装；当前并未发布到 PyPI/npm。首次体验与格式选择见[版本选择](https://valen-team.github.io/zh-Hans/docs/valen/choosing/)。
+
 [English](onnx.md) · **简体中文**
 
 通过 ONNX Runtime 将 Valen 决策接入自己的应用。SDK 使用已发布的 Valen ONNX 组件，包含训练后的视觉主干与 Mixer 决策头；本地 SDK 推理无需安装 PyTorch 或 Transformers。
@@ -23,7 +25,7 @@
 在新终端中执行：
 
 ```bash
-git clone https://github.com/Valen-Team/valen-sdk-python.git
+git clone --branch v0.2.0 --depth 1 https://github.com/Valen-Team/valen-sdk-python.git
 cd valen-sdk-python
 python -m pip install ".[onnx]"
 python examples/local_decisions.py
@@ -136,7 +138,7 @@ python examples/media.py /path/to/clip.mp4 --video
 需要 Node.js 22.12+ 或 24，以及 Git：
 
 ```bash
-git clone https://github.com/Valen-Team/valen-sdk-js.git
+git clone --branch v0.2.0 --depth 1 https://github.com/Valen-Team/valen-sdk-js.git
 cd valen-sdk-js
 npm ci --ignore-scripts
 node examples/local.mjs
@@ -149,7 +151,7 @@ node examples/local.mjs
 浏览器示例可以独立使用。在新终端中克隆 JavaScript SDK 并进入示例目录；如果已经克隆，可直接进入 `valen-sdk-js/examples/browser`：
 
 ```bash
-git clone https://github.com/Valen-Team/valen-sdk-js.git
+git clone --branch v0.2.0 --depth 1 https://github.com/Valen-Team/valen-sdk-js.git
 cd valen-sdk-js/examples/browser
 npm install
 npm run dev

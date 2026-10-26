@@ -21,7 +21,7 @@ SGLang defaults to port `30000`; vLLM defaults to port `8000`.
 Install the Python SDK in a separate environment with Python 3.11+ and Git; the main repository's training dependencies are not required. These commands run on CPU:
 
 ```bash
-python -m pip install "valen-sdk[onnx,server] @ git+https://github.com/Valen-Team/valen-sdk-python.git"
+python -m pip install "valen-sdk[onnx,server] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
 valen serve --model Valen-Team/Valen-0.8B-ONNX --model-name valen --port 8000
 ```
 
@@ -29,7 +29,7 @@ The service listens at `127.0.0.1:8000` by default and exposes `/v1/systemone` a
 
 Connect with `Valen.remote("http://127.0.0.1:8000/v1", model="valen")`; JavaScript provides the same `Valen.remote` factory. HTTP-only clients do not need ONNX Runtime or local model weights. See [ONNX & SDKs](onnx.md) and the [Python SDK](https://github.com/Valen-Team/valen-sdk-python).
 
-HTTP images/video must use inline base64 data URLs; local file paths cannot be used as HTTP media URLs. Video additionally needs `python -m pip install "valen-sdk[video] @ git+https://github.com/Valen-Team/valen-sdk-python.git"`. Direct SDK calls can read local media paths.
+HTTP images/video must use inline base64 data URLs; local file paths cannot be used as HTTP media URLs. Video additionally needs `python -m pip install "valen-sdk[video] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"`. Direct SDK calls can read local media paths.
 
 ## Inference inside an application
 

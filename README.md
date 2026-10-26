@@ -24,8 +24,14 @@
 </p>
 
 <p align="center">
-  <a href="#introduction">Introduction</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="cookbook/api_quickstart.ipynb">Cookbook</a>
+  <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="cookbook/api_quickstart.ipynb">Cookbook</a>
 </p>
+
+<a id="version-selection"></a>
+
+## Choose a version
+
+For a first try, use the [web experience or free API](https://valen-team.github.io/) without downloading weights. [Which version should I choose?](docs/choosing.md) · [GGUF local service](docs/gguf.md)
 
 <a id="introduction"></a>
 
@@ -36,6 +42,8 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 <a id="news"></a>
 
 ## News
+
+- **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; use the [Valen custom CPU runtime](docs/gguf.md). Unmodified llama.cpp/Ollama support is not claimed.
 
 - **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](docs/onnx.md).
 
@@ -51,12 +59,12 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## Models and datasets
 
-| Model | Native weights / Transformers | ONNX Runtime |
-| --- | --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) |
-| Valen-preview-0923 (earlier release) | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — |
+| Model | Native weights / Transformers | ONNX Runtime | GGUF / custom runtime |
+| --- | --- | --- | --- |
+| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
+| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
+| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
+| Valen-preview-0923 (earlier release) | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) contains Image and Video subsets for visual decision evaluation. Earlier releases include [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) for training, [General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) for evaluation, and [Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) for game training and evaluation.
 
@@ -221,6 +229,7 @@ Keep keys in server-side environment variables.
 
 | Goal | Starting point |
 | --- | --- |
+| C++ Linux CPU HTTP / GGUF | [Valen custom llama-server](docs/gguf.md) |
 | Python CPU / NVIDIA CUDA, Node.js or browser applications | [ONNX & SDKs](docs/onnx.md) |
 | Native PyTorch / Transformers model | [Transformers](#transformers) |
 | GPU HTTP service | [SGLang](serving/sglang/README.md) · [vLLM](serving/vllm/README.md) |
@@ -382,7 +391,7 @@ Run inference in your application with ONNX Runtime, without installing PyTorch 
 Local Python inference needs Python 3.11+ and Git; HTTP-only clients support Python 3.10+. Python downloads the full selected variant on first use, such as about 3.505 GB for 0.8B FP32, and reuses the cache on later runs. A local model directory also works.
 
 ```bash
-python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git"
+python -m pip install "valen-sdk[onnx] @ git+https://github.com/Valen-Team/valen-sdk-python.git@v0.2.0"
 ```
 
 ```python
