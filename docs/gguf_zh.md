@@ -6,6 +6,13 @@
 
 运行包版本 **0.1.0**，目标 Ubuntu 22.04+、glibc 2.35+、AVX2/FMA/F16C/BMI2 CPU。验证范围与 SHA256 见[发布清单](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.1.0)。无需编译。先下载运行包和校验文件：
 
+需要系统提供 `curl`、`tar`、`sha256sum`、`libstdc++6` 和 `libgomp1`。最小化 Ubuntu 安装若缺少这些组件，可先执行：
+
+```sh
+sudo apt-get update
+sudo apt-get install -y curl ca-certificates coreutils tar libstdc++6 libgomp1
+```
+
 ```sh
 base=https://github.com/Valen-Team/Valen/releases/download/gguf-runtime-v0.1.0
 curl -fLO "$base/valen-gguf-runtime-0.1.0-linux-x86_64.tar.gz"
@@ -18,7 +25,8 @@ cd valen-gguf-runtime-0.1.0-linux-x86_64
 优先使用已有模型文件。首次文本请求只需同尺寸的 Q8_0 文本文件，0.8B 约 0.761 GiB（磁盘大小，不是内存需求）。没有缓存时下载：
 
 ```sh
-curl -fL https://huggingface.co/Valen-Team/Valen-0.8B-GGUF/resolve/main/Valen-0.8B-Q8_0.gguf -o Valen-0.8B-Q8_0.gguf
+curl -fL https://huggingface.co/Valen-Team/Valen-0.8B-GGUF/resolve/e24c6ad38a83d300ae7fc83917a1a54a0e416455/Valen-0.8B-Q8_0.gguf -o Valen-0.8B-Q8_0.gguf
+echo '930d29c39c7104bb69a028a0605fad5eba0949e1f3ad4a3a3bbca13716c4b9d6  Valen-0.8B-Q8_0.gguf' | sha256sum -c -
 ./serve -m "$PWD/Valen-0.8B-Q8_0.gguf" --load-mode none --device none -ngl 0 \
   --host 127.0.0.1 --port 8080 -c 4096 -b 4096 -ub 4096 \
   -t 4 --parallel 1 --no-warmup
