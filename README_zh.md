@@ -129,6 +129,12 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
   <a href="assets/figures/evaluation-20261006/jevbench.png"><img src="assets/figures/evaluation-20261006/jevbench.png" alt="Valen 公开 JevBench 准确率：0.8B 77.92%、2B 83.55%、4B 83.12%；InternDecision 4B 为 86.58%。" width="1400"></a>
 </p>
 
+### 决定哪些工作交给 Valen
+
+用 Valen 返回的概率，决定哪些工单自动分流、哪些交给人工复核。[对比三个规模模型的自动处理比例与错误率](https://valen-team.github.io/zh-Hans/docs/valen/reliability/)，再用[完整示例](https://valen-team.github.io/zh-Hans/cookbook/calibrated-routing/)在自己的数据上校准并保存分流规则，无需重新训练模型。
+
+[在线试用 Valen →](https://valen-team.github.io/zh-Hans/?example=ticket)
+
 早期结果保留在[归档 README](history/README_zh_preview.md)。
 
 <a id="快速开始"></a>

@@ -129,6 +129,12 @@ Valen is also integrated into the [Jev Decision Index](https://huggingface.co/sp
   <a href="assets/figures/evaluation-20261006/jevbench.png"><img src="assets/figures/evaluation-20261006/jevbench.png" alt="Valen public JevBench accuracy: 0.8B 77.92%, 2B 83.55%, 4B 83.12%. InternDecision 4B scores 86.58%." width="1400"></a>
 </p>
 
+### Choose what to automate
+
+Use Valen’s probabilities to choose which tickets to route automatically and which need human review. [Compare 0.8B, 2B and 4B](https://valen-team.github.io/docs/valen/reliability/) by measured automated coverage and error rate, then [calibrate and save a routing rule](https://valen-team.github.io/cookbook/calibrated-routing/) for your own data without retraining the model.
+
+[Try Valen online →](https://valen-team.github.io/?example=ticket)
+
 Earlier results remain in the [archived README](history/README_preview.md).
 
 <a id="quick-start"></a>

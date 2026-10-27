@@ -12,11 +12,18 @@ from valen.evaluation.inference import answer
 from valen.modeling.factory import build_model, build_compiler, get_backend, normalize_model_config
 from valen.data.schema import read_jsonl
 from .metrics import question_metrics, summarize
+from .calibration import load_calibration, temperature_for, write_json
+from .identity import checkpoint_identity, read_protocol
 from valen.modeling.qwen.attention import ATTENTION_IMPLEMENTATIONS, with_attention_implementation
 
 
 @torch.no_grad()
-def run(checkpoint, data, output, device="cuda", attn_implementation=None):
+def run(checkpoint, data, output, device="cuda", attn_implementation=None, *,
+        calibration=None, protocol=None, cache_role=None, group_namespace=None):
+    if (calibration or cache_role) and not protocol:
+        raise ValueError("--protocol is required for versioned calibration/cache identity")
+    if cache_role and not group_namespace:
+        raise ValueError("--group-namespace is required for stable split overlap checks")
     run_started = time.monotonic()
     context = initialize(device)
     output, data, checkpoint = Path(output), Path(data), Path(checkpoint)
@@ -29,6 +36,9 @@ def run(checkpoint, data, output, device="cuda", attn_implementation=None):
     model = build_model(config)
     payload = load_checkpoint(checkpoint, model)
     model.eval()
+    identity = checkpoint_identity(checkpoint, config, model, read_protocol(protocol), attn_implementation) if protocol else None
+    artifact = load_calibration(calibration, identity) if calibration else None
+    temperature = artifact["temperature"] if artifact else 1.0
     backend = get_backend(config["architecture"])
     from valen.data.schema import target_distribution
     compiler = build_compiler(config, data.parent)
@@ -67,15 +77,19 @@ def run(checkpoint, data, output, device="cuda", attn_implementation=None):
                            "domain": meta.get("domain", "unknown"),
                            "timing": {"compile_seconds": compile_seconds, "forward_seconds": forward_seconds,
                                       "compile_plus_forward_seconds": compile_seconds + forward_seconds},
-                           "metrics": question_metrics(question, logits)}
+                           "metrics": question_metrics(question, logits / temperature_for(temperature, question.kind)),
+                           "raw_metrics": question_metrics(question, logits)}
                     if backend.unit_scope == "state" or getattr(compiled, "inputs", None) is not None:
                         row["timing"].update(shared_state_forward_seconds=unit_seconds,
                                              forward_scope="amortized_per_question")
                     rows.append(row)
-                    probabilities = logits.float().softmax(-1).cpu().tolist()
+                    scaled = logits.double() / temperature_for(temperature, question.kind)
+                    probabilities = scaled.softmax(-1).cpu().tolist()
                     prediction = dict(row, target=dict(zip(question.keys, question.target)),
                                       probabilities=dict(zip(question.keys, probabilities)),
-                                      answer=answer(question, logits))
+                                      logits=logits.detach().double().cpu().tolist(),
+                                      candidates=list(question.keys),
+                                      answer=answer(question, logits, temperature_for(temperature, question.kind)))
                     stream.write(json.dumps(prediction, ensure_ascii=False) + "\n")
             if (local_index + 1) % 50 == 0 or local_index + 1 == len(indices):
                 stream.flush()
@@ -103,11 +117,12 @@ def run(checkpoint, data, output, device="cuda", attn_implementation=None):
                   "data_sha256": file_sha256(data),
                   "checkpoint_sha256": file_sha256(checkpoint / "checkpoint.pt"),
                   "records": len(records), "questions": len(all_rows), "world_size": context.world_size,
-                  "temperature": 1.0, "elapsed_seconds": time.monotonic() - started,
+                  "temperature": temperature, "calibration": artifact, "identity": identity, "elapsed_seconds": time.monotonic() - started,
                   "rank_timing": rank_timing,
                   "evaluation_wall_seconds": max(r["evaluation_seconds"] for r in rank_timing),
                   "load_and_evaluation_wall_seconds": max(r["load_and_evaluation_seconds"] for r in rank_timing),
-                  "metrics": summarize(all_rows)}
+                  "metrics": summarize(all_rows),
+                  "raw_metrics": summarize([dict(row, metrics=row["raw_metrics"]) for row in all_rows])}
         if hasattr(model, "attention_backends"):
             report["attention_backends"] = model.attention_backends
         report["questions_per_second"] = len(all_rows) / report["evaluation_wall_seconds"]
@@ -125,6 +140,21 @@ def run(checkpoint, data, output, device="cuda", attn_implementation=None):
         with (output / "predictions.jsonl").open("w", encoding="utf-8") as stream:
             for row in predictions:
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
+        if cache_role:
+            cache_rows = []
+            for row in predictions:
+                if row["group_id"] is None:
+                    raise ValueError("Every cache row needs a stable source group_id")
+                keys = row["candidates"]
+                cache_rows.append({"id": f"{row['record_id'] or row['record_index']}:{row['qid']}",
+                                   "group_id": str(row["group_id"]), "type": row["task"],
+                                   "candidates": keys, "target": [row["target"][k] for k in keys],
+                                   "logits": row["logits"], "status": "ok",
+                                   **{key: row[key] for key in ("domain", "modality", "language")}})
+            write_json(output / "reliability-cache.json", {
+                "schema_version": 1, "role": cache_role, "identity": identity,
+                "dataset": {"sha256": file_sha256(data), "source": str(data)},
+                "group_namespace": group_namespace, "rows": cache_rows})
         print(json.dumps({"event": "evaluation_complete", "questions": len(all_rows),
                           "metrics_path": str(output / "metrics.json")}), flush=True)
     context.barrier()
@@ -138,9 +168,15 @@ def main():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--attn-implementation", choices=ATTENTION_IMPLEMENTATIONS,
                         help="Override the Qwen checkpoint's attention backend")
+    parser.add_argument("--calibration", help="Versioned fitted temperature artifact")
+    parser.add_argument("--protocol", help="JSON deployment recipe shared across all splits")
+    parser.add_argument("--cache-role", choices=("calibration", "policy", "test", "unassigned"))
+    parser.add_argument("--group-namespace", help="Stable source-entity namespace, shared across splits")
     args = parser.parse_args()
     try:
-        run(args.checkpoint, args.data, args.output, args.device, args.attn_implementation)
+        extra = {key: getattr(args, key) for key in ("calibration", "protocol", "cache_role", "group_namespace")
+                 if getattr(args, key) is not None}
+        run(args.checkpoint, args.data, args.output, args.device, args.attn_implementation, **extra)
     finally:
         close()
 

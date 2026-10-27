@@ -1,0 +1,3 @@
+
+# Preserve checksummed CSV output from the standard-library writer.
+evaluation/reliability/results/**/*.csv whitespace=cr-at-eol

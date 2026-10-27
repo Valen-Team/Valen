@@ -41,3 +41,8 @@ htmlcov/
 *.onnx
 *.gguf
 *-weights-*.data
+
+# Published aggregate reliability evidence (no per-question logs)
+!/evaluation/reliability/results/
+/evaluation/reliability/results/*
+!/evaluation/reliability/results/banking77-v1/

@@ -60,6 +60,7 @@ def main():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--attn-implementation", choices=ATTENTION_IMPLEMENTATIONS,
                         help="Override the Qwen checkpoint's attention backend")
+    parser.add_argument("--protocol", help="Deployment recipe required for versioned calibration")
     args = parser.parse_args()
     config = json.loads((Path(args.checkpoint) / "config.json").read_text(encoding="utf-8"))
     config = normalize_model_config(config)
@@ -71,7 +72,19 @@ def main():
     backend = get_backend(config["architecture"])
     compiler = build_compiler(config, Path(args.data).parent)
     records = read_jsonl(args.data, candidate_fn=backend.candidates)
-    temperature = json.loads(Path(args.calibration).read_text(encoding="utf-8"))["temperature"] if args.calibration else 1.0
+    temperature = 1.0
+    if args.calibration:
+        from .calibration import load_calibration
+        from .identity import checkpoint_identity, read_protocol
+        saved = json.loads(Path(args.calibration).read_text(encoding="utf-8"))
+        if "schema_version" in saved:
+            if not args.protocol:
+                raise ValueError("Versioned calibration requires --protocol for identity validation")
+            identity = checkpoint_identity(args.checkpoint, config, model, read_protocol(args.protocol), args.attn_implementation)
+            temperature = load_calibration(args.calibration, identity)["temperature"]
+        else:
+            # Compatibility for existing manually configured temperature files.
+            temperature = saved["temperature"]
     with Path(args.output).open("w", encoding="utf-8") as output:
         for record in records:
             output.write(json.dumps(predict(model, compiler.compile(record), temperature), ensure_ascii=False) + "\n")
