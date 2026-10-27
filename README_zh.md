@@ -147,6 +147,8 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 <a id="api-usage"></a>
 
+托管 API 的数据用途与保留说明见 [API 数据处理与保留](https://valen-team.github.io/zh-Hans/docs/valen/api/data-handling/)。
+
 ### 1. API 调用
 
 无需下载模型或准备 GPU。通过[官网聊天](https://valen-team.github.io/zh-Hans/)直接体验，或在 Python 中调用免费接口：

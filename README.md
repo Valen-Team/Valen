@@ -147,6 +147,8 @@ For a local HTTP service, start with the [deployment guide](https://valen-team.g
 
 <a id="api-usage"></a>
 
+For hosted API data use and retention, see [API data handling and retention](https://valen-team.github.io/docs/valen/api/data-handling/).
+
 ### 1. API usage
 
 No model download or GPU is required. Try the [web chat](https://valen-team.github.io/), or call the free endpoint from Python:
