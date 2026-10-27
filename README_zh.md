@@ -450,6 +450,7 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 | 项目 | 与 Valen 的关系 | 证据与范围 |
 | --- | --- | --- |
+| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | 研究评测 | 在心智理论基准上评测 Valen-Preview-0923，并在 [arXiv 预印本](https://arxiv.org/abs/2610.18610)中引用其模型卡；结果适用于该版本和论文所述评测设置。 |
 | [vLLM Jev](https://github.com/mode-io/vllm-jev) | 模型部署 | 在其说明的 Linux 和 Mac 路径中，为 Valen-Preview-0923 提供文本、图片与短视频决策服务，详见[模型列表](https://github.com/mode-io/vllm-jev#supported-models)。 |
 | [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | 参考推理服务 | 提供 Valen-Preview-0923 的 [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md)，支持文本和单张图片；该路径不支持视频或原生 Valen CUDA 执行。GitHub 元数据未显示仓库许可证。 |
 | [JevLight](https://github.com/usail-hkust/JevLight) | 仿真配置 | 交通信号仿真项目包含 [Valen 模型配置](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b)；这说明已配置接入，不代表实验结果已经发布。GitHub 元数据未显示仓库许可证。 |

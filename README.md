@@ -450,6 +450,7 @@ Selected public projects that integrate Valen models or use Valen datasets. Desc
 
 | Project | Connection to Valen | Evidence and scope |
 | --- | --- | --- |
+| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | Research evaluation | Evaluates Valen-Preview-0923 on Theory of Mind benchmarks and cites its model card in an [arXiv preprint](https://arxiv.org/abs/2610.18610); results apply to that checkpoint and the paper's evaluation settings. |
 | [vLLM Jev](https://github.com/mode-io/vllm-jev) | Model serving | Serves Valen-Preview-0923 for text, image and short-video decisions on documented Linux and Mac paths; see the [model matrix](https://github.com/mode-io/vllm-jev#supported-models). |
 | [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | Reference serving | [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md) for Valen-Preview-0923, text and one image; no video or native Valen CUDA executor in this path. No repository license was found in GitHub metadata. |
 | [JevLight](https://github.com/usail-hkust/JevLight) | Simulation configuration | Traffic-signal simulation includes [Valen model configurations](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b); this establishes a configured integration, not completed results. No repository license was found in GitHub metadata. |
