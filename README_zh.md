@@ -133,6 +133,8 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 用 Valen 返回的概率，决定哪些工单自动分流、哪些交给人工复核。[对比三个规模模型的自动处理比例与错误率](https://valen-team.github.io/zh-Hans/docs/valen/reliability/)，再用[完整示例](https://valen-team.github.io/zh-Hans/cookbook/calibrated-routing/)在自己的数据上校准并保存分流规则，无需重新训练模型。
 
+**候选项都不合适怎么办？** 例如，工单要求修改地址，但候选项只有退款、查物流和开发票。加入“都不适用”候选后，可以将选中它的请求转人工。在一项 200 条英文工单测试中，候选外请求被错误自动接收的数量从 8 条降到 1 条，同时多了 3 条正常请求转人工。用自己的数据验证分流效果。[查看完整案例和可运行代码](https://valen-team.github.io/zh-Hans/cookbook/unknown-categories/)。
+
 [在线试用 Valen →](https://valen-team.github.io/zh-Hans/?example=ticket)
 
 早期结果保留在[归档 README](history/README_zh_preview.md)。
@@ -141,7 +143,7 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 
 ## 快速开始
 
-启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
+启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、[候选项都不对](https://valen-team.github.io/zh-Hans/cookbook/unknown-categories/)、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
 
 <a id="api-usage"></a>
 

@@ -133,6 +133,8 @@ Valen is also integrated into the [Jev Decision Index](https://huggingface.co/sp
 
 Use Valen’s probabilities to choose which tickets to route automatically and which need human review. [Compare 0.8B, 2B and 4B](https://valen-team.github.io/docs/valen/reliability/) by measured automated coverage and error rate, then [calibrate and save a routing rule](https://valen-team.github.io/cookbook/calibrated-routing/) for your own data without retraining the model.
 
+**What if no option fits?** A customer might ask to change an address when the choices only cover refunds, delivery tracking and invoices. Add a “none of these” choice and route its selections for review. In a test of 200 English tickets, incorrect automatic acceptance of out-of-scope requests fell from 8 to 1, while 3 more in-scope requests went to review. Validate the routing policy on your own data. [See the complete example and runnable code](https://valen-team.github.io/cookbook/unknown-categories/).
+
 [Try Valen online →](https://valen-team.github.io/?example=ticket)
 
 Earlier results remain in the [archived README](history/README_preview.md).
@@ -141,7 +143,7 @@ Earlier results remain in the [archived README](history/README_preview.md).
 
 ## Quick start
 
-For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/onnx/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
+For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/onnx/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, [when no option fits](https://valen-team.github.io/cookbook/unknown-categories/), product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
 
 <a id="api-usage"></a>
 
