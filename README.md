@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="https://valen-team.github.io/cookbook/api-quickstart/">Cookbook</a>
+  <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="#community-projects">Community</a> · <a href="https://valen-team.github.io/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
 <a id="version-selection"></a>
@@ -441,6 +441,21 @@ Add `--lora --revision lora-ckpt` to evaluate the earlier LoRA model. Outputs: `
 Start with complete Valen-0.8B and LoRA SFT. Head warmup / joint SFT from Qwen is not language-model pretraining. RLCD is experimental.
 
 [Methods and configuration](https://valen-team.github.io/docs/valen/training/) · [complete executable domain recipe](https://valen-team.github.io/cookbook/domain-finetuning/) · [save, resume and export](https://valen-team.github.io/docs/valen/checkpoints/)
+
+<a id="community-projects"></a>
+
+## Community projects
+
+Selected public projects that integrate Valen models or use Valen datasets. Descriptions reflect the linked sources; inclusion does not imply affiliation, endorsement, or independent reproduction. Check each repository's license and supported model version before use.
+
+| Project | Connection to Valen | Evidence and scope |
+| --- | --- | --- |
+| [vLLM Jev](https://github.com/mode-io/vllm-jev) | Model serving | Serves Valen-Preview-0923 for text, image and short-video decisions on documented Linux and Mac paths; see the [model matrix](https://github.com/mode-io/vllm-jev#supported-models). |
+| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | Reference serving | [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md) for Valen-Preview-0923, text and one image; no video or native Valen CUDA executor in this path. No repository license was found in GitHub metadata. |
+| [JevLight](https://github.com/usail-hkust/JevLight) | Simulation configuration | Traffic-signal simulation includes [Valen model configurations](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b); this establishes a configured integration, not completed results. No repository license was found in GitHub metadata. |
+| [reflex](https://github.com/ptlnextdoor/reflex) | Model experiments | [Valen-0.8B reference and MLX experiments](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md) on synthetic game frames; author reports limitations. No repository license was found in GitHub metadata. |
+| [LLM2Jev](https://github.com/Yinsongxu/LLM2Jev) | Dataset evaluation | Uses [Valen-Eval-Game](https://github.com/Yinsongxu/LLM2Jev#valen-eval-game) for a single-step Sokoban evaluation of its own inference pipeline. |
+| [tasksource](https://github.com/sileod/tasksource) | Dataset adaptation | Repackages Valen game examples into typed decisions; see its [data audit](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md) for split and label details. |
 
 <a id="contributions"></a>
 

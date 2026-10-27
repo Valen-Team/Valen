@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/">Cookbook</a>
+  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="#community-projects">社区项目</a> · <a href="https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
 <a id="简介"></a>
@@ -441,6 +441,21 @@ python -m evaluation.visualdecisionbench.evaluate \
 优先从完整 Valen-0.8B 使用 LoRA SFT；从 Qwen 基座开始的评分头 warmup / joint SFT 不是语言模型预训练。RLCD 为实验性路径。
 
 [方法与配置](https://valen-team.github.io/zh-Hans/docs/valen/training/) · [完整可执行领域案例](https://valen-team.github.io/zh-Hans/cookbook/domain-finetuning/) · [保存、恢复和导出](https://valen-team.github.io/zh-Hans/docs/valen/checkpoints/)
+
+<a id="community-projects"></a>
+
+## 社区项目
+
+以下公开项目接入了 Valen 模型或使用了 Valen 数据集。介绍依据链接中的资料整理；收录不代表合作、背书或已独立复现。使用前请查看各项目的许可证和支持的模型版本。
+
+| 项目 | 与 Valen 的关系 | 证据与范围 |
+| --- | --- | --- |
+| [vLLM Jev](https://github.com/mode-io/vllm-jev) | 模型部署 | 在其说明的 Linux 和 Mac 路径中，为 Valen-Preview-0923 提供文本、图片与短视频决策服务，详见[模型列表](https://github.com/mode-io/vllm-jev#supported-models)。 |
+| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | 参考推理服务 | 提供 Valen-Preview-0923 的 [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md)，支持文本和单张图片；该路径不支持视频或原生 Valen CUDA 执行。GitHub 元数据未显示仓库许可证。 |
+| [JevLight](https://github.com/usail-hkust/JevLight) | 仿真配置 | 交通信号仿真项目包含 [Valen 模型配置](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b)；这说明已配置接入，不代表实验结果已经发布。GitHub 元数据未显示仓库许可证。 |
+| [reflex](https://github.com/ptlnextdoor/reflex) | 模型实验 | 在合成游戏画面上进行 [Valen-0.8B 参考与 MLX 实验](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md)，作者也记录了局限。GitHub 元数据未显示仓库许可证。 |
+| [LLM2Jev](https://github.com/Yinsongxu/LLM2Jev) | 数据集评测 | 使用 [Valen-Eval-Game](https://github.com/Yinsongxu/LLM2Jev#valen-eval-game) 对自己的推理流程进行推箱子单步评测。 |
+| [tasksource](https://github.com/sileod/tasksource) | 数据集整理 | 将 Valen 游戏样本整理为类型化决策数据；划分和标签处理见其[数据审计](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md)。 |
 
 <a id="contributions"></a>
 
