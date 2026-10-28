@@ -43,17 +43,11 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 最新动态
 
-- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；使用 [Valen 定制 CPU 运行包](https://valen-team.github.io/zh-Hans/docs/valen/gguf/)。官方未修改 llama.cpp/Ollama 不视为支持。
-
+- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
 - **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
-
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
-- **2026-10-18**：发布[JevalKit](https://github.com/Valen-Team/JevalKit)，一个面向 Jev 类决策模型的开源评测工具，提供统一的模型接口和已整理的评测数据。 [🤗 JevalKit 排行榜](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard)。
-- **2026-10-13**：发布 Valen 模型的 ONNX 和 GGUF 版本，可在 [Hugging Face](https://huggingface.co/Valen-Team) 下载。
-- **2026-10-13**：支持通过 API 调用 `valen-preview-0923`、`valen-0-8b`、`valen-2b` 和 `valen-4b`，使用示例见 [API 入门教程](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)。
-- **2026-10-07**：**更快、更准、更通用。** 发布支持文本、图像和视频的最新多模态 System One 模型 **Valen（[0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) / [2B](https://huggingface.co/Valen-Team/Valen-2B) / [4B](https://huggingface.co/Valen-Team/Valen-4B)）**，以及 [**VisualDecisionBench**](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) 评测基准。
-- **2026-09-30**：**训练与推理支持：** 支持 Flash Attention 2 训练与推理、多机多卡训练，并提高训练时的 GPU 显存利用率。
-- **2026-09-23**：**Valen** 仓库开源，同时发布 [**Valen-preview-0923**](https://huggingface.co/Valen-Team/Valen-Preview-0923) 及其对应的[**训练数据**](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k)。
+
+更早的动态与各版本代码变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 <a id="模型下载"></a>
 
@@ -488,6 +482,7 @@ python -m evaluation.visualdecisionbench.evaluate \
 @misc{valen,
   author       = {{Valen Team}},
   title        = {Valen},
+  version      = {0.3.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
   year         = {2026},

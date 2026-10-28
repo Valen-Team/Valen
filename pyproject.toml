@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "valen"
-version = "0.1.0"
+version = "0.3.0"
 description = "Valen: multimodal decisions with Qwen3.5 or dual encoders, SFT and experimental RLCD"
 readme = "README.md"
 license = {file = "LICENSE"}

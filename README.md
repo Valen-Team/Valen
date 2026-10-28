@@ -43,17 +43,11 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## News
 
-- **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; use the [Valen custom CPU runtime](https://valen-team.github.io/docs/valen/gguf/). Unmodified llama.cpp/Ollama support is not claimed.
-
+- **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; run them with the [Valen-patched llama.cpp and Ollama](https://valen-team.github.io/docs/valen/gguf/), which return candidate probabilities instead of generated text.
 - **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/).
-
 - **2026-10-21**: The [web chat](https://valen-team.github.io/) and [bilingual documentation](https://valen-team.github.io/docs/) are live, with a [free decision API](#api-usage) requiring no key.
-- **2026-10-18**: Released [JevalKit](https://github.com/Valen-Team/JevalKit), an open-source evaluation toolkit for Jev-like decision models, providing unified model interfaces and prepared evaluation datasets. The [🤗 JevalKit Leaderboard](https://huggingface.co/spaces/Valen-Team/JevalKit-Leaderboard).
-- **2026-10-13**: Released ONNX and GGUF versions of Valen models, available on [Hugging Face](https://huggingface.co/Valen-Team).
-- **2026-10-13**: Added API access to `valen-preview-0923`, `valen-0-8b`, `valen-2b` and `valen-4b`. See the [API basics tutorial](https://valen-team.github.io/cookbook/api-quickstart/) for usage examples.
-- **2026-10-07**: **Faster, more accurate, more versatile.** Released the latest multimodal System One model **Valen ([0.8B](https://huggingface.co/Valen-Team/Valen-0.8B), [2B](https://huggingface.co/Valen-Team/Valen-2B) and [4B](https://huggingface.co/Valen-Team/Valen-4B))**, supporting text, images and video, and the [**VisualDecisionBench**](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) benchmark.
-- **2026-09-30**: **Training&Inference Support:** Added Flash Attention 2 support, enabled training across multiple nodes and GPUs, and improved GPU memory utilization during training.
-- **2026-09-23**: Open-sourced the **Valen** repository and released [**Valen-preview-0923**](https://huggingface.co/Valen-Team/Valen-Preview-0923) with its corresponding [**training data**](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k).
+
+Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.md).
 
 <a id="model-downloads"></a>
 
@@ -488,6 +482,7 @@ If you use Valen in your work, please cite this repository:
 @misc{valen,
   author       = {{Valen Team}},
   title        = {Valen},
+  version      = {0.3.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
   year         = {2026},

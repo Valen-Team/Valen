@@ -32,4 +32,15 @@ The installation includes PyTorch and other substantial dependencies. Model, GPU
 
 The backend protocol CI runs cross-repository adapter checks; see [.github/workflows/backend-contract.yml](.github/workflows/backend-contract.yml). If a check needs an environment you do not have, say so in the pull request.
 
+## Releasing
+
+Minor versions mark model releases; patch versions mark code or documentation changes without new weights. To cut a release:
+
+1. In [CHANGELOG.md](CHANGELOG.md), move the `Unreleased` entries under a new version heading with today's date and update the compare links at the bottom.
+2. Set the same version in `pyproject.toml` and in the citation block of both READMEs. Add a line to the News section and keep only the three most recent entries there.
+3. Commit, then create an annotated tag and push it with the branch: `git tag -a vX.Y.Z -m "<summary>"` and `git push origin main vX.Y.Z`.
+4. Create the GitHub Release from the tag, using that version's CHANGELOG section as the notes.
+
+Never move or reuse an existing tag; a correction gets a new patch version.
+
 Contributions are subject to the repository's [Apache 2.0 license](LICENSE); third-party models and datasets have their own licenses.
