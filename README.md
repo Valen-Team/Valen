@@ -16,7 +16,7 @@
 
 <p align="center">
   <strong>English</strong> · <a href="README_zh.md">简体中文</a><br>
-  <a href="https://valen-team.github.io/">Try Valen</a> · <a href="https://valen-team.github.io/docs/">Documentation</a> · <a href="https://valen-team.github.io/docs/valen/api/">API</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
+  <a href="https://valen-team.github.io/">Try Valen</a> · <a href="https://valen-team.github.io/docs/">Documentation</a> · <a href="https://valen-team.github.io/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
 </p>
 
 <p align="center">
@@ -43,6 +43,7 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## News
 
+- **2026-10-29**: Released the [Valen agent skill](https://github.com/Valen-Team/skills) for Claude Code, Cursor, Codex and other coding agents, with [`llms.txt`](https://valen-team.github.io/llms.txt), Markdown versions of every docs page and an [OpenAPI spec](https://valen-team.github.io/openapi.json). [JevalKit](https://github.com/Valen-Team/JevalKit) adds OpenAI, Anthropic and Gemini LLM baselines for side-by-side comparison.
 - **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; run them with the [Valen-patched llama.cpp and Ollama](https://valen-team.github.io/docs/valen/gguf/), which return candidate probabilities instead of generated text.
 - **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/).
 - **2026-10-21**: The [web chat](https://valen-team.github.io/) and [bilingual documentation](https://valen-team.github.io/docs/) are live, with a [free decision API](#api-usage) requiring no key.
@@ -138,6 +139,13 @@ Earlier results remain in the [archived README](history/README_preview.md).
 ## Quick start
 
 For a local HTTP service, start with the [deployment guide](https://valen-team.github.io/docs/valen/onnx/). Complete, tested application tutorials are maintained only in the [official Cookbook](https://valen-team.github.io/cookbook/): [API basics](https://valen-team.github.io/cookbook/api-quickstart/), [local inference](https://valen-team.github.io/cookbook/local-inference/), ticket routing, [when no option fits](https://valen-team.github.io/cookbook/unknown-categories/), product-image screening and video tagging. [简体中文](https://valen-team.github.io/zh-Hans/cookbook/).
+
+To have a coding agent build the integration, install the [Valen agent skill](https://github.com/Valen-Team/skills):
+
+```bash
+claude plugin marketplace add Valen-Team/skills && claude plugin install valen@valen-team  # Claude Code
+npx skills add Valen-Team/skills --skill valen                                             # other agents
+```
 
 <a id="api-usage"></a>
 

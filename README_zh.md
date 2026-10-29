@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="README.md">English</a> · <strong>简体中文</strong><br>
-  <a href="https://valen-team.github.io/zh-Hans/">在线体验</a> · <a href="https://valen-team.github.io/zh-Hans/docs/">文档</a> · <a href="https://valen-team.github.io/zh-Hans/docs/valen/api/">API</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
+  <a href="https://valen-team.github.io/zh-Hans/">在线体验</a> · <a href="https://valen-team.github.io/zh-Hans/docs/">文档</a> · <a href="https://valen-team.github.io/zh-Hans/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
 </p>
 
 <p align="center">
@@ -43,6 +43,7 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 最新动态
 
+- **2026-10-29**：发布面向 Claude Code、Cursor、Codex 等编程 agent 的 [Valen agent skill](https://github.com/Valen-Team/skills)，官网同步提供 [`llms.txt`](https://valen-team.github.io/zh-Hans/llms.txt)、每个文档页的 Markdown 版本和 [OpenAPI 规格](https://valen-team.github.io/openapi.json)。[JevalKit](https://github.com/Valen-Team/JevalKit) 新增 OpenAI、Anthropic、Gemini 通用大模型基线，便于直接对比。
 - **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
 - **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
@@ -138,6 +139,13 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 ## 快速开始
 
 启动本地 HTTP 服务请阅读[部署指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。完整、经过实测的应用教程只在[官网 Cookbook](https://valen-team.github.io/zh-Hans/cookbook/)维护，包括 [API 入门](https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/)、[本地推理基础](https://valen-team.github.io/zh-Hans/cookbook/local-inference/)、工单分流、[候选项都不对](https://valen-team.github.io/zh-Hans/cookbook/unknown-categories/)、商品图片筛选和短视频标注。[English](https://valen-team.github.io/cookbook/)。
+
+想让编程 agent 帮你完成集成，可以安装 [Valen agent skill](https://github.com/Valen-Team/skills)：
+
+```bash
+claude plugin marketplace add Valen-Team/skills && claude plugin install valen@valen-team  # Claude Code
+npx skills add Valen-Team/skills --skill valen                                             # 其他 agent
+```
 
 <a id="api-usage"></a>
 
