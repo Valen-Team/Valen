@@ -43,6 +43,7 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 最新动态
 
+- **2026-10-29**：[Python SDK](https://github.com/Valen-Team/valen-sdk-python/blob/main/README_zh.md#与大模型对比) 新增 `Valen.llm()`：把同一套问题交给 GPT、Claude 或 Gemini，返回同样的类型化答案，可在自己的代码里直接对比 Valen 与大模型的决策、token 和延迟。
 - **2026-10-29**：发布面向 Claude Code、Cursor、Codex 等编程 agent 的 [Valen agent skill](https://github.com/Valen-Team/skills)，官网同步提供 [`llms.txt`](https://valen-team.github.io/zh-Hans/llms.txt)、每个文档页的 Markdown 版本和 [OpenAPI 规格](https://valen-team.github.io/openapi.json)。[JevalKit](https://github.com/Valen-Team/JevalKit) 新增 OpenAI、Anthropic、Gemini 通用大模型基线，便于直接对比。
 - **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
 - **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
@@ -422,7 +423,7 @@ with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
 
 `q8-mlp` 可降低下载体积与文本内存，CUDA 使用 `cuda-fp16`，0.8B 浏览器使用专用 `web-portable`。
 
-完整的图片/视频、SystemOne、CUDA、浏览器、本地 HTTP 服务与离线缓存示例见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。[Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。自己导出检查点见 [模块化 ONNX 导出](scripts/export/qwen/README-onnx-v2_zh.md)。
+完整的图片/视频、SystemOne、CUDA、浏览器、本地 HTTP 服务与离线缓存示例见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。[Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。要在同一套问题上与 GPT、Claude 或 Gemini 对比，使用 [`Valen.llm`](https://valen-team.github.io/zh-Hans/docs/valen/onnx/#与大模型对比)。自己导出检查点见 [模块化 ONNX 导出](scripts/export/qwen/README-onnx-v2_zh.md)。
 
 ### 3. 评估 VisualDecisionBench
 

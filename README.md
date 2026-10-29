@@ -43,6 +43,7 @@ Valen (万澜) brings visual perception to System One decision-making. Inspired 
 
 ## News
 
+- **2026-10-29**: The [Python SDK](https://github.com/Valen-Team/valen-sdk-python#compare-with-an-llm) adds `Valen.llm()`: send the same questions to GPT, Claude or Gemini and get the same typed answers back, to compare decisions, tokens and latency with Valen in your own code.
 - **2026-10-29**: Released the [Valen agent skill](https://github.com/Valen-Team/skills) for Claude Code, Cursor, Codex and other coding agents, with [`llms.txt`](https://valen-team.github.io/llms.txt), Markdown versions of every docs page and an [OpenAPI spec](https://valen-team.github.io/openapi.json). [JevalKit](https://github.com/Valen-Team/JevalKit) adds OpenAI, Anthropic and Gemini LLM baselines for side-by-side comparison.
 - **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; run them with the [Valen-patched llama.cpp and Ollama](https://valen-team.github.io/docs/valen/gguf/), which return candidate probabilities instead of generated text.
 - **2026-10-25**: Updated the modular ONNX models for [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX), [2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX) and [4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX), with [Python](https://github.com/Valen-Team/valen-sdk-python) and [JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDKs and a [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/).
@@ -422,7 +423,7 @@ The example prints a probability from 0 to 1; a higher value means the model is 
 
 Use `q8-mlp` to reduce download size and text memory, `cuda-fp16` for CUDA, and the dedicated 0.8B `web-portable` variant for browsers.
 
-See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/) for images/video, SystemOne, CUDA, browser inference, the local HTTP server and offline caching. [Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). To export your own checkpoint, use the [modular ONNX exporter](scripts/export/qwen/README-onnx-v2.md).
+See the [ONNX & SDK guide](https://valen-team.github.io/docs/valen/onnx/) for images/video, SystemOne, CUDA, browser inference, the local HTTP server and offline caching. [Python SDK](https://github.com/Valen-Team/valen-sdk-python) · [JavaScript SDK](https://github.com/Valen-Team/valen-sdk-js) · [C++ text integration](https://github.com/Valen-Team/valen-sdk-cpp). To compare with GPT, Claude or Gemini on the same questions, use [`Valen.llm`](https://valen-team.github.io/docs/valen/onnx/#compare-with-an-llm). To export your own checkpoint, use the [modular ONNX exporter](scripts/export/qwen/README-onnx-v2.md).
 
 ### 3. Evaluate VisualDecisionBench
 
