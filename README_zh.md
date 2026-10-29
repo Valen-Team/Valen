@@ -404,7 +404,7 @@ print(answer["answers"])
 本地 Python 推理需要 Python 3.11+；仅 HTTP 客户端支持 Python 3.10+。Python 首次加载会下载完整的所选变体，例如 0.8B FP32 约 3.505 GB；后续复用缓存，也可传入本地模型目录。
 
 ```bash
-python -m pip install "valen-sdk[onnx]==0.2.0"
+python -m pip install "valen-sdk[onnx]==0.3.0"
 ```
 
 ```python

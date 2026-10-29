@@ -404,7 +404,7 @@ Run inference in your application with ONNX Runtime, without installing PyTorch 
 Local Python inference needs Python 3.11+; HTTP-only clients support Python 3.10+. Python downloads the full selected variant on first use, such as about 3.505 GB for 0.8B FP32, and reuses the cache on later runs. A local model directory also works.
 
 ```bash
-python -m pip install "valen-sdk[onnx]==0.2.0"
+python -m pip install "valen-sdk[onnx]==0.3.0"
 ```
 
 ```python
