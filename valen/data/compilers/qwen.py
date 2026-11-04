@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import hashlib
 import torch
-from valen.data.schema import candidates, question_target
+from valen.data.schema import candidates, fold_noul_criteria, question_target
 from valen.data.types import QuestionSpec
 
 
@@ -91,6 +91,8 @@ class Compiler:
     def compile(self, record, rng=None, labeled_only=False):
         selected = []
         for qid, question in record["request"]["questions"].items():
+            # Noul rubrics belong in the prompt text for this architecture.
+            question = fold_noul_criteria(question)
             pairs = candidates(question)
             target = record.get("targets", {}).get(qid)
             if labeled_only and self.execution == "question" and question_target(question, target, [k for k, _ in pairs]) is None:

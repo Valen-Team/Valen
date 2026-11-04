@@ -61,6 +61,25 @@ def question_target(question, target, keys):
     return target_distribution(target, keys)
 
 
+def fold_noul_criteria(question):
+    """Move a Noul rubric into the instructions, exactly as the eval harness does.
+
+    Qwen's Noul head reads fixed true/false candidate descriptions, so a custom rubric would
+    otherwise be invisible during training while JevalKit appends it at evaluation time.
+    Qwen 的 Noul 头使用固定的 true/false 候选描述；自定义判定标准必须拼进题面，
+    否则训练看不到、评测却能看到，两边不一致。
+    """
+    criteria = question.get("criteria")
+    if question.get("type") != "noul" or not criteria:
+        return question
+    if not isinstance(criteria, dict) or set(criteria) != {"true", "false"}:
+        raise ValueError("Noul criteria must define true and false")
+    question = {k: v for k, v in question.items() if k != "criteria"}
+    question["instructions"] = (question["instructions"] + "\nTrue criterion: " + str(criteria["true"])
+                                + "\nFalse criterion: " + str(criteria["false"]))
+    return question
+
+
 def target_distribution(target, keys):
     if target is None or target.get("probabilities") is None:
         return None

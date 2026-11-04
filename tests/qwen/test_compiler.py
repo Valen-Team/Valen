@@ -125,3 +125,27 @@ def test_video_rope_matches_expanded_sequence(compiler):
         mm_token_type_ids=inputs["mm_token_type_ids"], video_grid_thw=inputs["video_grid_thw"],
         attention_mask=inputs["attention_mask"])
     assert position_ids.shape == (3, 1, branch.decision_position + 1)
+
+
+def test_noul_rubric_is_folded_into_the_instructions():
+    """A custom Noul rubric must reach the model, matching JevalKit's render_questions."""
+    from valen.data.schema import fold_noul_criteria
+    question = {"type": "noul", "instructions": "Does this record qualify?",
+                "criteria": {"true": "The threshold is met", "false": "The threshold is not met"}}
+    folded = fold_noul_criteria(question)
+    assert "criteria" not in folded
+    assert folded["instructions"] == ("Does this record qualify?\nTrue criterion: The threshold is met"
+                                      "\nFalse criterion: The threshold is not met")
+    # Unchanged without a rubric, and for other kinds.
+    plain = {"type": "noul", "instructions": "Is it red?"}
+    assert fold_noul_criteria(plain) is plain
+    choice = {"type": "choice", "instructions": "Pick", "criteria": {"a": "A"}}
+    assert fold_noul_criteria(choice) is choice
+
+
+def test_noul_rubric_reaches_the_compiled_prompt(compiler):
+    question = {"type": "noul", "instructions": "Does this record qualify?",
+                "criteria": {"true": "The threshold is met", "false": "The threshold is not met"}}
+    state = compiler.compile({"group_id": "g", "request": {"state": "s", "questions": {"q": question}}})
+    text = compiler.tokenizer.decode(state.questions[0].branches[0].inputs["input_ids"][0])
+    assert "True criterion: The threshold is met" in text
