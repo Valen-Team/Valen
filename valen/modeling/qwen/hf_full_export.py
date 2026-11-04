@@ -9,6 +9,7 @@ import shutil
 import sys
 
 import torch
+from .grounding import grounding_signature
 
 from .hf_export import bundle_runtime, compare_outputs, dump, evaluate_records, log, sha_file, sha_tensor, validation_records
 
@@ -83,9 +84,10 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
         valen_media_kwargs=config["media_kwargs"],
         valen_backbone_autocast_dtype="bfloat16" if model.backbone_autocast_dtype == torch.bfloat16 else None,
         valen_full_attention_mask=config.get("full_attention_mask", "causal"),
+        valen_grounding=grounding_signature(config),
     )
     standalone = modeling.ValenQwenForDecisionMaking(
-        configuration.ValenQwenConfig(**exported_config), backbone=model.backbone, head=model.head,
+        configuration.ValenQwenConfig(**exported_config), backbone=model.backbone, head=model.head, grounding=getattr(model, "grounding", None),
     ).eval().requires_grad_(False)
     wrapped_outputs = evaluate_records(standalone, modeling.Compiler, processor, config, records)
     wrapped_delta = compare_outputs(reference, wrapped_outputs, probability_tolerance=1e-6, logit_tolerance=1e-5)

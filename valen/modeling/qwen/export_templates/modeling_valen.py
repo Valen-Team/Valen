@@ -15,6 +15,7 @@ from .batching import collate_branches
 from .schema import candidates
 from .data_types import QuestionSpec
 from .block_attention import enable as enable_block_attention
+from .grounding import GroundingHead
 
 
 class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
@@ -23,15 +24,21 @@ class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
     model_name = "Valen"
     architecture = "qwen"
     # The trained Mixer stays FP32 with a BF16 backbone. / BF16 基座、FP32 决策头。
-    _keep_in_fp32_modules_strict = ["head"]
+    _keep_in_fp32_modules_strict = ["head", "grounding"]
 
-    def __init__(self, config, backbone=None, head=None):
+    def __init__(self, config, backbone=None, head=None, grounding=None):
         super().__init__(config)
         if (backbone is None) != (head is None):
             raise ValueError("Supply both a merged backbone and a trained head")
         self.backbone = backbone if backbone is not None else Qwen3_5Model(config)
         self.head = head if head is not None else build_head(config.text_config.hidden_size, config.valen_head)
         self.head.float()
+        # Optional bbox head. / 可选定位头。
+        settings = getattr(config, "valen_grounding", None)
+        self.grounding = grounding if grounding is not None else (
+            GroundingHead(config.text_config.hidden_size, settings["width"], settings["hidden"]) if settings else None)
+        if self.grounding is not None:
+            self.grounding.float()
         # Preserve full-SFT FP32 weights with BF16 compute. / 保留全参 SFT 的存储与计算精度。
         self.backbone_autocast_dtype = (
             torch.bfloat16 if getattr(config, "valen_backbone_autocast_dtype", None) == "bfloat16" else None

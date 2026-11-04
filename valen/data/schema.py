@@ -9,6 +9,13 @@ def candidates(question):
     if not isinstance(question.get("instructions"), str) or not question["instructions"].strip():
         raise ValueError("instructions must be nonempty text")
     criteria = question.get("criteria")
+    if kind == "bbox":
+        # Localization has no candidates; the image tokens are the choices.
+        # 定位题没有文本候选，图像 token 即候选。
+        image = question.get("image", 0)
+        if type(image) is not int or image < 0:
+            raise ValueError("bbox image must be a nonnegative image index")
+        return []
     if kind == "noul":
         return [("true", "True / 是：满足问题中的条件。"), ("false", "False / 否：不满足问题中的条件。")]
     if kind == "choice":
@@ -25,6 +32,33 @@ def candidates(question):
     if any(not isinstance(k, str) or not k or not isinstance(v, str) or not v.strip() for k, v in result):
         raise ValueError("Candidate names and descriptions must be nonempty strings")
     return result
+
+
+def box_target(target):
+    """Normalized [x1, y1, x2, y2] box or [x, y] point. / 归一化框或点。"""
+    if target is None or (target.get("bbox") is None and target.get("point") is None):
+        return None
+    if target.get("bbox") is not None:
+        box = target["bbox"]
+        if (not isinstance(box, (list, tuple)) or len(box) != 4
+                or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in box)):
+            raise ValueError("bbox target must be four finite numbers")
+        x1, y1, x2, y2 = map(float, box)
+        if not (0 <= x1 < x2 <= 1 and 0 <= y1 < y2 <= 1):
+            raise ValueError("bbox target must be normalized with x1<x2, y1<y2 in [0, 1]")
+        return {"bbox": [x1, y1, x2, y2]}
+    point = target["point"]
+    if (not isinstance(point, (list, tuple)) or len(point) != 2
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1 for v in point)):
+        raise ValueError("point target must be two numbers in [0, 1]")
+    return {"point": [float(v) for v in point]}
+
+
+def question_target(question, target, keys):
+    """Training target for any question type. / 任意题型的监督目标。"""
+    if question.get("type") == "bbox":
+        return box_target(target)
+    return target_distribution(target, keys)
 
 
 def target_distribution(target, keys):
@@ -52,7 +86,7 @@ def validate_record(record, candidate_fn=candidates):
     if set(targets) - set(request["questions"]):
         raise ValueError("Unknown target question IDs")
     for qid, question in request["questions"].items():
-        target_distribution(targets.get(qid), [k for k, _ in candidate_fn(question)])
+        question_target(question, targets.get(qid), [k for k, _ in candidate_fn(question)])
     if not record.get("group_id"):
         raise ValueError("group_id is required for leakage-free splits")
     return record

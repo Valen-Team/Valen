@@ -57,6 +57,7 @@ def bundle_runtime(source, destination):
         "heads.py": "valen/modeling/qwen/heads.py",
         "batching.py": "valen/modeling/qwen/batching.py",
         "block_attention.py": "valen/modeling/qwen/block_attention.py",
+        "grounding.py": "valen/modeling/qwen/grounding.py",
         "runtime_model.py": "valen/modeling/qwen/model.py",
         "compiler.py": "valen/data/compilers/qwen.py",
         "schema.py": "valen/data/schema.py",

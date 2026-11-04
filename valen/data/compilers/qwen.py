@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import hashlib
 import torch
-from valen.data.schema import candidates, target_distribution
+from valen.data.schema import candidates, question_target
 from valen.data.types import QuestionSpec
 
 
@@ -16,6 +16,11 @@ class Branch:
     context_span: tuple | None = None
     instruction_span: tuple | None = None
     candidate_spans: list | None = None
+    # Valen-next: per-token block ids (question_blocks) and bbox image tokens.
+    segments: torch.Tensor | None = None
+    sequence_length: int | None = None
+    image_positions: torch.Tensor | None = None
+    image_grid: tuple | None = None
 
 
 @dataclass(init=False)
@@ -88,15 +93,15 @@ class Compiler:
         for qid, question in record["request"]["questions"].items():
             pairs = candidates(question)
             target = record.get("targets", {}).get(qid)
-            if labeled_only and self.execution == "question" and target_distribution(target, [k for k, _ in pairs]) is None:
+            if labeled_only and self.execution == "question" and question_target(question, target, [k for k, _ in pairs]) is None:
                 continue
             if rng is not None and question["type"] == "choice":
                 rng.shuffle(pairs)
             selected.append((qid, question, pairs, target))
         # 标签只决定监督范围，共享序列仍保留所有题。 / Labels select losses, never prompt content.
         if not selected or (labeled_only and not any(
-                target_distribution(target, [k for k, _ in pairs]) is not None
-                for _, _, pairs, target in selected)):
+                question_target(question, target, [k for k, _ in pairs]) is not None
+                for _, question, pairs, target in selected)):
             return CompiledState([], 0, 0, [])
         messages, media = self._messages(record["request"]["state"])
         expected_assets = {str((self.media_root / a["path"]).resolve()): a["sha256"] for a in record.get("assets", [])}
@@ -127,6 +132,8 @@ class Compiler:
         logical_tokens, compute_tokens = base_length, 0
         compiled = []
         for qid, question, pairs, target in selected:
+            if question["type"] == "bbox":
+                raise ValueError("bbox questions require qwen_execution=shared_state")
             keys = [k for k, _ in pairs]
             branches = []
             groups = [[pair] for pair in pairs] if question["type"] == "score" else [pairs]
@@ -174,25 +181,50 @@ class Compiler:
                 compute_tokens += length
                 logical_tokens += len(suffix)
             compiled.append(Question(qid, question["type"], keys, [v for _, v in pairs], branches,
-                                     target_distribution(target, keys), not media))
+                                     question_target(question, target, keys), not media))
         return CompiledState(compiled, logical_tokens, compute_tokens, media)
+
+    def _image_tokens(self, base):
+        """Positions and merged (rows, cols) grid of every image. / 每张图的 token 位置与网格。"""
+        grid = base.get("image_grid_thw")
+        if grid is None:
+            return []
+        token_id = getattr(self.processor, "image_token_id", None)
+        if token_id is None:
+            token_id = self.tokenizer.convert_tokens_to_ids(getattr(self.processor, "image_token", "<|image_pad|>"))
+        merge = getattr(getattr(self.processor, "image_processor", None), "merge_size", 2)
+        positions = (base["input_ids"][0] == token_id).nonzero().flatten()
+        result, offset = [], 0
+        for t, h, w in grid.tolist():
+            rows, cols = h // merge, w // merge
+            count = t * rows * cols
+            result.append((positions[offset:offset + count], (rows, cols)))
+            offset += count
+        if offset != positions.numel():
+            raise ValueError("Image token count does not match image_grid_thw")
+        return result
 
     def _compile_shared(self, selected, base, media, labeled_only=False):
         """All schemas precede all readouts; labels and external IDs never enter inputs.
 
-        This is ordinary causal attention, not isolated question/Score branches.
-        No answer tokens or LM output layer are required by the decision heads.
+        Readouts follow the shared suffix. Segment ids record, per token, the prefix
+        (state), shared glue and each question's own block (schema + readout), so the
+        model may choose causal, prefix/suffix or per-question block attention.
         """
         base_length = base["input_ids"].shape[1]
-        suffix, compiled = [], []
+        suffix, compiled, segments = [], [], []
+        images = self._image_tokens(base)
 
-        def append(text, span=None):
+        def append(text, span=None, segment=0):
             start = base_length + len(suffix)
             if span is None:
-                suffix.extend(self.tokenizer.encode(text, add_special_tokens=False))
+                ids = self.tokenizer.encode(text, add_special_tokens=False)
+                suffix.extend(ids)
+                segments.extend([segment] * len(ids))
                 return None
             encoded = self.tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
             suffix.extend(encoded["input_ids"])
+            segments.extend([segment] * len(encoded["input_ids"]))
             indices = [i for i, (a, b) in enumerate(encoded["offset_mapping"]) if a < span[1] and b > span[0]]
             if not indices:
                 raise ValueError("Empty token span for decision role")
@@ -200,28 +232,38 @@ class Compiler:
 
         append("<|im_start|>user\n")
         for index, (qid, question, pairs, target) in enumerate(selected):
+            block = index + 1
             for value in [question["instructions"]] + [v for pair in pairs for v in pair]:
                 if any(t in value for t in self.tokenizer.all_special_tokens):
                     raise ValueError("Reserved tokenizer control token in question/criteria")
             prefix = f"Question {index + 1}\nTask: {question['type']}\nQuestion: "
-            instruction = append(prefix + question["instructions"] + "\nCandidates:\n",
-                                 (len(prefix), len(prefix) + len(question["instructions"])))
             positions, spans = [], []
-            for key, description in pairs:
-                prefix = key + ": " if question["type"] != "score" else ""
-                spans.append(append(prefix + description, (len(prefix), len(prefix) + len(description))))
-                positions.append(base_length + len(suffix) - 1)
-                append("\n")
+            if question["type"] == "bbox":
+                image = question.get("image", 0)
+                if image >= len(images):
+                    raise ValueError(f"{qid}: bbox refers to image {image}, state has {len(images)}")
+                instruction = append(prefix + question["instructions"] + f"\nImage: {image + 1}\n",
+                                     (len(prefix), len(prefix) + len(question["instructions"])), block)
+            else:
+                instruction = append(prefix + question["instructions"] + "\nCandidates:\n",
+                                     (len(prefix), len(prefix) + len(question["instructions"])), block)
+                for key, description in pairs:
+                    prefix = key + ": " if question["type"] != "score" else ""
+                    spans.append(append(prefix + description, (len(prefix), len(prefix) + len(description)), block))
+                    positions.append(base_length + len(suffix) - 1)
+                    append("\n", segment=block)
             # Inputs and the decision position are filled after all schemas are appended.
             branch = Branch({}, positions, -1, (0, base_length), instruction, spans)
+            if question["type"] == "bbox":
+                branch.image_positions, branch.image_grid = images[question.get("image", 0)]
             keys = [key for key, _ in pairs]
             compiled.append(Question(qid, question["type"], keys, [v for _, v in pairs], [branch],
-                                     target_distribution(target, keys), not media))
+                                     question_target(question, target, keys), not media))
         append("<|im_end|>\n<|im_start|>assistant\n")
         for index, question in enumerate(compiled):
-            append(f"Question {index + 1} Decision:")
+            append(f"Question {index + 1} Decision:", segment=index + 1)
             question.branches[0].decision_position = base_length + len(suffix) - 1
-            append("\n")
+            append("\n", segment=index + 1)
         length = base_length + len(suffix)
         if length > self.max_length:
             raise ValueError(f"Shared state: {length} tokens exceed max_length={self.max_length}; no truncation")
@@ -232,8 +274,11 @@ class Compiler:
         if "mm_token_type_ids" in base:
             inputs["mm_token_type_ids"] = torch.cat([base["mm_token_type_ids"],
                                                     base["mm_token_type_ids"].new_zeros((1, len(suffix)))], dim=1)
+        row_segments = torch.tensor([-1] * base_length + segments, dtype=torch.long)
         for question in compiled:
             question.branches[0].inputs = inputs
+            question.branches[0].segments = row_segments
+            question.branches[0].sequence_length = length
         if labeled_only:
             compiled = [question for question in compiled if question.target is not None]
         return CompiledState(compiled, length, length, media, inputs)

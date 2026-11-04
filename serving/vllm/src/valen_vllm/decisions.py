@@ -92,8 +92,13 @@ def to_internal(body, *, allow_video=False):
                 item["criteria"] = dict(zip(keys, descriptions))
             else:
                 item["criteria"] = descriptions
+        elif kind == "bbox":
+            image = q.get("image", 0)
+            if type(image) is not int or image < 0:
+                raise ValueError("bbox image must be a nonnegative image index")
+            item["image"] = image
         elif kind != "predicate":
-            raise ValueError("question type must be predicate, choice or score")
+            raise ValueError("question type must be predicate, choice, score or bbox")
         questions[name] = item
     result = {"state": state, "questions": questions}
     if "model" in body:
@@ -111,6 +116,8 @@ def to_public(body, response):
         entry = {"name": name, "type": q["type"]}
         if q["type"] == "predicate":
             entry["probability"] = old["noul"]
+        elif q["type"] == "bbox":
+            entry.update(bbox=old["bbox"], point=old["point"], confidence=old["confidence"])
         else:
             key = "choices" if q["type"] == "choice" else "levels"
             candidates = q[key]

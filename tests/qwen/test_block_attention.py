@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from valen.modeling.qwen.block_attention import block_mask, block_attention_forward
+from valen.modeling.qwen.block_attention import block_mask, block_attention_forward, segment_mask
 
 
 class Module(torch.nn.Module):
@@ -72,7 +72,7 @@ def test_flash_matches_dense_with_padding_and_gqa():
     prefix = torch.tensor([10, 20, 4], device="cuda")
     mask = (torch.arange(length, device="cuda")[None] < lengths[:, None]).long()
     fast, _ = block_attention_forward(Module(), q, k, v, mask, valen_prefix_lengths=prefix, scaling=dim ** -0.5)
-    slow = block_attention._dense(Module(), q.float(), k.float(), v.float(), prefix, lengths, 0.0, dim ** -0.5)
+    slow = block_attention._dense(q.float(), k.float(), v.float(), block_mask(prefix, lengths, length), 0.0, dim ** -0.5)
     valid = mask.bool()
     assert (fast.float()[valid] - slow[valid]).abs().max() < 2e-2
     grad = torch.randn_like(slow)
@@ -81,6 +81,36 @@ def test_flash_matches_dense_with_padding_and_gqa():
     for t in (q, k, v):
         t.grad = None
     qs, ks, vs = (t.detach().float().requires_grad_(True) for t in (q, k, v))
-    block_attention._dense(Module(), qs, ks, vs, prefix, lengths, 0.0, dim ** -0.5).mul(grad)[valid].sum().backward()
+    block_attention._dense(qs, ks, vs, block_mask(prefix, lengths, length), 0.0, dim ** -0.5).mul(grad)[valid].sum().backward()
     for a, b in zip(fast_grads, (qs.grad, ks.grad, vs.grad)):
         assert (a.float() - b).abs().max() < 5e-2
+
+
+def test_prefix_lm_suffix_is_causal():
+    mask = block_mask(torch.tensor([3]), torch.tensor([6]), 6, causal_suffix=True)[0, 0]
+    assert mask[:3, :3].all() and not mask[:3, 3:].any()
+    for q in range(3, 6):
+        assert mask[q, :q + 1].all() and not mask[q, q + 1:].any()
+
+
+def test_question_blocks_isolate_questions():
+    # prefix(3) | glue(1) | q1(2) | q2(2) | glue(1) | q1 readout(1) | q2 readout(1) | pad(1)
+    segments = torch.tensor([[-1, -1, -1, 0, 1, 1, 2, 2, 0, 1, 2, -2]])
+    mask = segment_mask(segments, torch.tensor([3]), torch.tensor([11]))[0, 0]
+    assert mask[:3, :3].all() and not mask[:3, 3:].any()
+    q1, q2 = [4, 5, 9], [6, 7, 10]
+    for a in q1:
+        assert mask[a, :4].all() and mask[a, q1].all() and not mask[a, q2].any() and mask[a, 8]
+    for a in q2:
+        assert not mask[a, q1].any() and mask[a, q2].all()
+    assert not mask[:, 11].any()
+
+
+def test_prefix_lm_matches_dense_on_cpu():
+    torch.manual_seed(0)
+    q, k, v = (torch.randn(2, 2, 7, 4) for _ in range(3))
+    prefix, mask2d = torch.tensor([3, 2]), torch.tensor([[1] * 7, [1] * 5 + [0] * 2])
+    out, _ = block_attention_forward(Module(), q, k, v, mask2d, valen_prefix_lengths=prefix, valen_mask_mode="prefix_lm")
+    k2 = k.clone(); k2[:, :, 6] += 3  # last token changes nothing before it
+    out2, _ = block_attention_forward(Module(), q, k2, v, mask2d, valen_prefix_lengths=prefix, valen_mask_mode="prefix_lm")
+    assert torch.allclose(out[0, :6], out2[0, :6])

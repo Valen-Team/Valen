@@ -4,7 +4,8 @@ from torch import nn
 from valen import MODEL_NAME
 from .heads import DecisionHead, build_head
 from .batching import branch_batches, collate_branches
-from .block_attention import enable as enable_block_attention
+from .block_attention import enable as enable_block_attention, forward_kwargs
+from .grounding import BoxFeatures
 
 
 class ValenQwen(nn.Module):
@@ -20,17 +21,19 @@ class ValenQwen(nn.Module):
                                dict({"projection_dim": projection_dim}, **(head_config or {})))
         self.backbone_autocast_dtype = None
         self.full_attention_mask = "causal"
+        # Optional bbox head (Valen-next). / 可选定位头。
+        self.grounding = None
 
     def _hidden(self, inputs, branches=None):
         # 保留 FP32 参数更新，前向使用 BF16。 / FP32 updates with BF16 backbone compute.
         device = next(self.backbone.parameters()).device
         context = (torch.autocast(device.type, dtype=self.backbone_autocast_dtype)
                    if self.backbone_autocast_dtype is not None else nullcontext())
-        kwargs = {}
-        if getattr(self, "full_attention_mask", "causal") == "block_bidirectional":
+        mask = getattr(self, "full_attention_mask", "causal")
+        if mask != "causal":
             # 前缀为 state，后缀为题目区；每行一个边界。 / One state/question boundary per row.
             enable_block_attention(self.backbone)
-            kwargs["valen_prefix_lengths"] = torch.tensor([b.context_span[1] for b in branches], device=device)
+        kwargs = forward_kwargs(mask, branches, device)
         with context:
             return self.backbone(**inputs, use_cache=False, return_dict=True, **kwargs).last_hidden_state
 
@@ -65,8 +68,8 @@ class ValenQwen(nn.Module):
         return self._state_features(hidden, state)
 
     def _state_features(self, hidden, state):
-        return [[self.head.extract_features(hidden, branch) for branch in q.branches]
-                for q in state.questions]
+        return [[(self.grounding if q.kind == "bbox" else self.head).extract_features(hidden, branch)
+                 for branch in q.branches] for q in state.questions]
 
     def forward_state(self, state):
         return [self.score_features(features) for features in self.extract_state_features(state)]
@@ -114,5 +117,9 @@ class ValenQwen(nn.Module):
         return [torch.cat(branches) for branches in outputs]
 
     def score_features(self, features, head=None):
+        if features and isinstance(features[0], BoxFeatures):
+            if getattr(self, "grounding", None) is None:
+                raise ValueError("bbox questions require a model with grounding_head")
+            return self.grounding(features[0])
         head = self.head if head is None else head
         return torch.cat([head.score_features(hidden) for hidden in features])
