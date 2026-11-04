@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Valen-Decision</h1>
 <p align="center"><strong>Fast Decisions. Continuous Evolution.</strong></p>
-<p align="center">A multimodal System One decision model. Text, images and video in; structured decision probabilities out.</p>
+<p align="center">Valen-Decision is a multimodal System One decision model. Text, images and video in; structured decision probabilities out.</p>
 
 <p align="center">
   <a href="https://huggingface.co/Valen-Team/Valen-0.8B"><img src="https://img.shields.io/badge/Valen-0.8B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 0.8B"></a>
@@ -68,13 +68,13 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
 
 ## Demos
 
-**Valen** image and video decision-making — click the preview to watch the full demo.
+**Valen-Decision** image and video decision-making — click the preview to watch the full demo.
 
 <p align="center">
   <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen demo preview. Click to watch the full video." width="1000"></a>
 </p>
 
-**Game decision-making** — five successful Valen rollouts. Click any preview to watch the full video.
+**Game decision-making** — five successful Valen-Decision rollouts. Click any preview to watch the full video.
 
 <table width="100%">
   <tr>
@@ -105,13 +105,13 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
 
 <a id="results"></a>
 
-## Evaluation results — Valen
+## Evaluation results — Valen-Decision
 
 [JevalKit](https://github.com/Valen-Team/JevalKit) is our evaluation toolkit for decision models, with unified model interfaces, benchmark integration, and scoring protocols. Use it to evaluate and compare decision models across supported benchmarks.
 
 Valen is also integrated into the [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index). Visit the index for its evaluation results and comparisons with other decision models.
 
-**Visual decisions at 0.8B, 2B and 4B.** Valen uses Qwen3.5 + Mixer with shared-state inference, trained with SFT on millions of samples. The evaluation compares these checkpoints with published decision models on **VisualDecisionBench-Image, VisualDecisionBench-Video and public JevBench**.
+**Visual decisions at 0.8B, 2B and 4B.** Valen-Decision uses Qwen3.5 + Mixer with shared-state inference, trained with SFT on millions of samples. The evaluation compares these checkpoints with published decision models on **VisualDecisionBench-Image, VisualDecisionBench-Video and public JevBench**.
 
 <p align="center">
   <a href="assets/figures/evaluation-20261006/eval_v1.png"><img src="assets/figures/evaluation-20261006/eval_v1.png" alt="Valen VisualDecisionBench-Image accuracy by model size: 0.8B 75.94%, 2B 80.41%, 4B 83.06%, compared with published baselines." width="1400"></a>
@@ -485,12 +485,12 @@ Built on [Qwen3.5](https://huggingface.co/Qwen/Qwen3.5-2B), with the decision in
 
 ## Citation
 
-If you use Valen in your work, please cite this repository:
+If you use Valen-Decision in your work, please cite this repository:
 
 ```bibtex
 @misc{valen,
   author       = {{Valen Team}},
-  title        = {Valen},
+  title        = {Valen-Decision},
   version      = {0.3.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},

@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Valen-Decision</h1>
 <p align="center"><strong>快速决策，持续进化。</strong></p>
-<p align="center">多模态 System One 决策模型。输入文本、图像和视频，输出结构化决策概率。</p>
+<p align="center">Valen-Decision 是多模态 System One 决策模型。输入文本、图像和视频，输出结构化决策概率。</p>
 
 <p align="center">
   <a href="https://huggingface.co/Valen-Team/Valen-0.8B"><img src="https://img.shields.io/badge/Valen-0.8B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 0.8B"></a>
@@ -68,13 +68,13 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 演示
 
-**Valen** 图像与视频决策演示，点击预览观看完整视频。
+**Valen-Decision** 图像与视频决策演示，点击预览观看完整视频。
 
 <p align="center">
   <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen 演示预览，点击观看完整视频。" width="1000"></a>
 </p>
 
-**游戏决策演示**——五条由 Valen 成功完成的游戏轨迹。点击任一预览可观看完整视频。
+**游戏决策演示**——五条由 Valen-Decision 成功完成的游戏轨迹。点击任一预览可观看完整视频。
 
 <table width="100%">
   <tr>
@@ -105,13 +105,13 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 <a id="实验结果"></a>
 
-## 评测结果 — Valen
+## 评测结果 — Valen-Decision
 
 [JevalKit](https://github.com/Valen-Team/JevalKit) 是我们的决策模型评测工具，提供统一的模型接口、Benchmark 接入和评分协议，可用于在支持的评测任务上评估与比较不同决策模型。
 
 Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index)，可前往查看该评测中的结果及与其他决策模型的对比。
 
-**覆盖 0.8B、2B、4B 的视觉决策模型。** Valen 采用 Qwen3.5 + Mixer 和共享 state 推理，在百万级样本上进行 SFT。以下在 **VisualDecisionBench-Image、VisualDecisionBench-Video、公开 JevBench** 三组评测中，与已发布的决策模型进行对比。
+**覆盖 0.8B、2B、4B 的视觉决策模型。** Valen-Decision 采用 Qwen3.5 + Mixer 和共享 state 推理，在百万级样本上进行 SFT。以下在 **VisualDecisionBench-Image、VisualDecisionBench-Video、公开 JevBench** 三组评测中，与已发布的决策模型进行对比。
 
 <p align="center">
   <a href="assets/figures/evaluation-20261006/eval_v1.png"><img src="assets/figures/evaluation-20261006/eval_v1.png" alt="Valen VisualDecisionBench-Image 准确率按模型规模排列：0.8B 75.94%、2B 80.41%、4B 83.06%，与发布基线比较。" width="1400"></a>
@@ -125,7 +125,7 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
   <a href="assets/figures/evaluation-20261006/jevbench.png"><img src="assets/figures/evaluation-20261006/jevbench.png" alt="Valen 公开 JevBench 准确率：0.8B 77.92%、2B 83.55%、4B 83.12%；InternDecision 4B 为 86.58%。" width="1400"></a>
 </p>
 
-### 决定哪些工作交给 Valen
+### 决定哪些工作交给 Valen-Decision
 
 用 Valen 返回的概率，决定哪些工单自动分流、哪些交给人工复核。[对比三个规模模型的自动处理比例与错误率](https://valen-team.github.io/zh-Hans/docs/valen/reliability/)，再用[完整示例](https://valen-team.github.io/zh-Hans/cookbook/calibrated-routing/)在自己的数据上校准并保存分流规则，无需重新训练模型。
 
@@ -485,12 +485,12 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 ## 引用
 
-如果你在工作中使用 Valen，请引用本仓库：
+如果你在工作中使用 Valen-Decision，请引用本仓库：
 
 ```bibtex
 @misc{valen,
   author       = {{Valen Team}},
-  title        = {Valen},
+  title        = {Valen-Decision},
   version      = {0.3.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
