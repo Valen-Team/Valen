@@ -18,8 +18,6 @@ ATTENTION_NAME = "valen_block_bidirectional"
 MASKS = ("causal", "block_bidirectional", "prefix_lm", "question_blocks", "bbox_blocks")
 # Segment ids: prefix, shared suffix glue, padding; questions are 1, 2, ...
 PREFIX, COMMON, PADDING = -1, 0, -2
-# Crossover measured on L20Z; see _flex_segments. / 实测交叉点。
-FLEX_MIN_LENGTH = 3072
 _registered = False
 
 
@@ -106,12 +104,13 @@ def block_attention_forward(module, query, key, value, attention_mask, dropout=0
         if valen_segments is None:
             raise ValueError(f"{valen_mask_mode} requires valen_segments")
         segments = valen_segments.to(query.device)[:, :length]
-        # Dense masks are O(L^2) but have no kernel-launch overhead; FlexAttention is
-        # nearly length-independent. Measured on L20Z (bf16, 8 heads, GQA 4:1): dense
-        # 0.19/0.94/3.08/12.7/51.6 ms at L=512/2k/4k/8k/16k, flex a flat 1.7-2.1 ms.
-        # 稠密掩码在短序列更快，长序列按平方恶化；FlexAttention 几乎与长度无关。
-        if query.device.type == "cuda" and length >= FLEX_MIN_LENGTH:
-            return _flex_segments(query, key, value, segments, prefix, lengths, scaling), None
+        # One kernel for every shape, always. Selecting per sequence length looks like a
+        # free win (dense is faster below ~3k tokens, flex above) but it is not: the path
+        # depends on each rank's own padded length, so ranks on opposite sides of the
+        # threshold run different kernels, and the flex side blocks on torch.compile while
+        # its peers wait in an FSDP collective until the 10-minute NCCL timeout fires.
+        # 绝不按长度分流：每个 rank 的 padding 长度不同，会选到不同 kernel，
+        # 走 flex 的 rank 卡在 torch.compile 上，其他 rank 在 FSDP 集合通信里等到超时。
         return _dense(query, key, value, segment_mask(segments, prefix, lengths), dropout, scaling), None
     if valen_mask_mode not in ("block_bidirectional", "prefix_lm"):
         raise ValueError(f"Unknown block mask mode: {valen_mask_mode!r}")
@@ -146,42 +145,6 @@ def _flash(query, key, value, prefix, lengths, dropout, scaling, causal_suffix=F
             int(suffix.max()), int(lengths.max()), dropout_p=dropout, softmax_scale=scaling,
             causal=causal_suffix)
     return output
-
-
-_FLEX = {}
-
-
-def _flex_segments(query, key, value, segments, prefix, lengths, scaling):
-    """Block-sparse attention over per-question segments. / 按题分块的稀疏注意力。"""
-    from torch.nn.attention.flex_attention import create_block_mask, flex_attention
-
-    def visible(b, h, q, k):
-        valid = k < lengths[b]
-        key_prefix = k < prefix[b]
-        in_prefix = q < prefix[b]
-        same = segments[b, q] == segments[b, k]
-        return valid & torch.where(in_prefix, key_prefix, key_prefix | (segments[b, k] == COMMON) | same)
-
-    batch, heads, length, _ = query.shape
-    if "compiled" not in _FLEX:
-        # dynamic=True keeps one compiled kernel for every sequence length; with
-        # dynamic=False each new length recompiles and torch hits its recompile limit
-        # (8) after a handful of lengths, then silently falls back and errors out.
-        # dynamic=True 让所有长度共用一份编译产物；否则每种长度都会重编译，
-        # 很快触发上限并回退，最终报 GPU 错误。
-        _FLEX["compiled"] = torch.compile(flex_attention, dynamic=True)
-    # Round the mask up to the kernel block size so only a few distinct shapes occur.
-    # 掩码长度向上对齐到块大小，减少形状种类。
-    padded = (length + 127) // 128 * 128
-    if padded != length:
-        segments = F.pad(segments, (0, padded - length), value=PADDING)
-    mask = create_block_mask(visible, batch, None, padded, padded, device=query.device, _compile=True)
-    query, key, value = (F.pad(x, (0, 0, 0, padded - length)) for x in (query, key, value))
-    groups = heads // key.shape[1]
-    if groups > 1:
-        key, value = key.repeat_interleave(groups, 1), value.repeat_interleave(groups, 1)
-    output = _FLEX["compiled"](query, key, value, block_mask=mask, scale=scaling)
-    return output[:, :, :length].transpose(1, 2).contiguous()
 
 
 def block_mask(prefix, lengths, length, causal_suffix=False):
