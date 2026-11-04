@@ -16,7 +16,7 @@ class Branch:
     context_span: tuple | None = None
     instruction_span: tuple | None = None
     candidate_spans: list | None = None
-    # Valen-next: per-token block ids (question_blocks) and bbox image tokens.
+    # Valen-Decision-1.5: per-token block ids (question_blocks) and bbox image tokens.
     segments: torch.Tensor | None = None
     bbox_segments: tuple | None = None
     sequence_length: int | None = None

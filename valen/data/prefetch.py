@@ -49,8 +49,7 @@ class PackPrefetcher(AbstractContextManager):
                 except (ValueError, KeyError, TypeError) as exc:
                     # A raise here would leave this rank's peers waiting in the next
                     # collective until the NCCL timeout kills the job, so skip the record
-                    # and record it instead. Validate a mix up front with
-                    # valen-next/scripts/find_bad_records.py.
+                    # and record it instead; callers can inspect ``skipped``.
                     # 此处抛异常会让本 rank 退出，其余 rank 在集合通信里等到 NCCL 超时，
                     # 整个任务因一条数据而死；改为跳过并记录。
                     rng.setstate(before)

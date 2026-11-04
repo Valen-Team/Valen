@@ -1,4 +1,4 @@
-"""Block-structured full attention for Qwen3.5 (issue #40 and Valen-next ablations).
+"""Block-structured full attention for Qwen3.5 (issue #40, Valen-Decision-1.5).
 
 分块注意力：只作用于 full-attention 层，GatedDeltaNet 线性注意力层保持因果。
 每行有一个共享前缀 [0, p)（编译器的 context_span，即 state），其后为题目区。

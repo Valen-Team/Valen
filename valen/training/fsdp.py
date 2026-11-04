@@ -1,4 +1,4 @@
-"""FSDP2 sharding for large Qwen backbones (Valen-next 27B).
+"""FSDP2 sharding for large Qwen backbones (Valen-Decision-1.5).
 
 只对语言塔做 FSDP2 分片（每个 decoder 层一个单元），视觉塔与决策头保持复制，
 梯度仍由 ``synchronize_gradients`` 求和。所有 rank 每步必须执行相同次数的前向/反向，

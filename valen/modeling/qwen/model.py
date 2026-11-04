@@ -21,7 +21,7 @@ class ValenQwen(nn.Module):
                                dict({"projection_dim": projection_dim}, **(head_config or {})))
         self.backbone_autocast_dtype = None
         self.full_attention_mask = "causal"
-        # Optional bbox head (Valen-next). / 可选定位头。
+        # Optional bbox head (Valen-Decision-1.5). / 可选定位头。
         self.grounding = None
 
     def _hidden(self, inputs, branches=None):
