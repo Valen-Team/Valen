@@ -45,7 +45,8 @@ def build_qwen(config):
     finetuning = config.get("finetuning_type", "lora")
     if finetuning == "full" and stage == "joint":
         # 全参数更新语言及视觉主干。 / Update the entire language and vision backbone.
-        backbone.float().requires_grad_(True)
+        # FSDP casts its local shards to FP32 after sharding. / FSDP 分片后再转 FP32。
+        (backbone if config.get("fsdp") else backbone.float()).requires_grad_(True)
     elif stage != "warmup":
         from peft import LoraConfig, get_peft_model
         # Enumerate exact language Linear paths. This covers DeltaNet, full attention
@@ -67,7 +68,8 @@ def build_qwen(config):
     if dtype == torch.bfloat16 and (published or (finetuning == "full" and stage == "joint")):
         model.backbone_autocast_dtype = torch.bfloat16
     model.base_manifest = read_base_manifest(config["model_path"])
-    model.to(config.get("device", "cuda"))
+    # FSDP shards on CPU first, then moves local shards. / FSDP 先在 CPU 分片再上 GPU。
+    model.to("cpu" if config.get("fsdp") else config.get("device", "cuda"))
     model.lora_targets = targets
     model.full_attention_mask = mask
     if mask != "causal":

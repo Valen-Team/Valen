@@ -27,19 +27,40 @@ def shard_language_model(model, context):
 
     policy = MixedPrecisionPolicy(param_dtype=torch.bfloat16, reduce_dtype=torch.float32)
     language = model.backbone.language_model
+    trainable = any(p.requires_grad for p in language.parameters())
+
+    def master(module):
+        # FP32 master weights for trainable tensors, cast on CPU one unit at a time;
+        # fully_shard then moves only the local shard to this rank's GPU.
+        # 可训练参数逐层在 CPU 转 FP32，分片后只把本 rank 的分片放上 GPU。
+        if trainable:
+            module.float()
+
     for layer in language.layers:
+        master(layer)
         fully_shard(layer, mp_policy=policy, reshard_after_forward=True)
+    # The multimodal model calls embed_tokens before language_model.forward, so it
+    # needs its own unit. / 多模态模型先单独调用 embed_tokens，需单独成一个 FSDP 单元。
+    master(language.embed_tokens)
+    fully_shard(language.embed_tokens, mp_policy=policy, reshard_after_forward=True)
+    for name, child in language.named_children():
+        if name not in ("layers", "embed_tokens"):
+            master(child)
     fully_shard(language, mp_policy=policy, reshard_after_forward=True)
     # Losses already divide by the GLOBAL question/state count: sum, never average.
     # 损失已按全局数量归一化：梯度求和而非平均。
-    for module in [*language.layers, language]:
+    for module in [*language.layers, language.embed_tokens, language]:
         module.set_gradient_divide_factor(1.0)
+    if any(p.requires_grad for p in model.backbone.visual.parameters()):
+        model.backbone.visual.float()
+    # Root unit over the whole multimodal backbone: its pre-forward lazily initializes
+    # every nested unit once (embed_tokens is called before language_model.forward).
+    # 以整个多模态 backbone 作为 FSDP 根，统一完成各子单元的初始化。
+    # The vision tower is ignored by FSDP and stays replicated. / 视觉塔不分片、保持复制。
+    fully_shard(model.backbone, mp_policy=policy, reshard_after_forward=True,
+                ignored_params=set(model.backbone.visual.parameters()))
+    model.backbone.set_gradient_divide_factor(1.0)
     model.to(context.device)
-    # FP32 master weights for every trainable tensor; compute stays BF16.
-    # 可训练参数保存 FP32 主权重，计算仍为 BF16。
-    for parameter in model.parameters():
-        if parameter.requires_grad and parameter.dtype != torch.float32:
-            parameter.data = parameter.data.float()
     return model
 
 

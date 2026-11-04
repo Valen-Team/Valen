@@ -11,7 +11,8 @@ import torch
 from valen.training.checkpoint import capture_rank_state, file_sha256, load_checkpoint, save_checkpoint
 from valen.training.distributed import initialize as initialize_distributed, close, epoch_shard, broadcast_trainable, synchronize_gradients
 from .sft import SFTObjective
-from .batching import training_batches
+from .batching import training_batches, shared_state_indices
+from . import fsdp as fsdp_tools
 from .rlcd import RLCDObjective, validate_options
 from valen.modeling.factory import build_model, build_compiler, get_backend, normalize_model_config, optimizer_groups
 from valen.data.schema import read_jsonl
@@ -53,6 +54,11 @@ def normalize_config(config):
         raise ValueError("data_prefetch must be a boolean")
     if config["data_prefetch"] and (config["architecture"] != "qwen" or not (method == "sft" or shared_rl)):
         raise ValueError("Data prefetch requires Qwen SFT or shared_state RLCD")
+    if config.setdefault("fsdp", False):
+        # Equal per-rank unit counts need batched shared states. / FSDP 需按 state 批处理以对齐单元数。
+        if (config["architecture"] != "qwen" or method != "sft" or config.get("qwen_execution") != "shared_state"
+                or config["microbatch_size"] < 2 or config.get("finetuning_type") != "full"):
+            raise ValueError("fsdp requires Qwen full-parameter SFT with shared_state and microbatch_size >= 2")
     return config
 
 
@@ -78,18 +84,33 @@ def run(config, resume=None, initialize=None):
     if any(value != fingerprints[0] for value in fingerprints):
         raise ValueError("All ranks must use identical config and dataset contents")
     model = build_model(config)
+    sharded = config["fsdp"]
+    if sharded:
+        fsdp_tools.shard_language_model(model, context)
     groups = optimizer_groups(model, config)
     optimizer = torch.optim.AdamW(groups, weight_decay=config.get("weight_decay", 0.01))
     output = Path(config["output"])
     output.mkdir(parents=True, exist_ok=True)
     progress = {"epoch": 0, "cursor": 0, "step": 0, "order": None}
     payload = None
-    if initialize:
+    if initialize and sharded:
+        payload = fsdp_tools.load_sharded(initialize, model)
+        previous = payload["config"]
+        previous = normalize_model_config(previous)
+        backend.validate_initialization(previous, config)
+    elif initialize:
         payload = load_checkpoint(initialize, model, strict=False)
         previous = payload["config"]
         previous = normalize_model_config(previous)
         backend.validate_initialization(previous, config)
-    if resume:
+    if resume and sharded:
+        payload = fsdp_tools.load_sharded(resume, model, optimizer)
+        if payload["world_size"] != context.world_size:
+            raise ValueError("FSDP resume requires the same world size")
+        rank_state = payload["rank_states"][context.rank]
+        rng.setstate(tuple(v if not isinstance(v, list) else tuple(v) for v in rank_state["rng"]))
+        payload["progress"] = rank_state["progress"]
+    elif resume:
         payload = load_checkpoint(resume, model, optimizer, rng, rank=context.rank, world_size=context.world_size)
         allowed_changes = {"output", "epochs", "max_steps", "device", "save_every",
                            "microbatch_size", "microbatch_max_tokens", "data_prefetch"}
@@ -99,7 +120,10 @@ def run(config, resume=None, initialize=None):
         if {k: v for k, v in previous.items() if k not in allowed_changes} != {k: v for k, v in config.items() if k not in allowed_changes}:
             raise ValueError("Resume config/data changed; use --initialize for a new stage")
         progress = payload["progress"]
-    broadcast_trainable(model, context)
+    if sharded:
+        fsdp_tools.broadcast_replicated(model, context)
+    else:
+        broadcast_trainable(model, context)
     if config["method"] == "rlcd":
         if not resume:
             torch.manual_seed(seed + context.rank)
@@ -138,6 +162,12 @@ def run(config, resume=None, initialize=None):
     if token_budget <= 0:
         raise ValueError("tokens_per_step must be positive")
     def save():
+        if sharded:
+            rank_states = context.gather({"progress": json.loads(json.dumps(progress)), "rng": rng.getstate()})
+            fsdp_tools.save_sharded(output / "latest", model, optimizer,
+                                    {"config": config, "world_size": context.world_size, "rank_states": rank_states},
+                                    context)
+            return
         rank_states = context.gather(capture_rank_state(progress, rng))
         if context.primary:
             save_checkpoint(output / "latest", model, optimizer, config, progress, rng,
@@ -188,6 +218,11 @@ def run(config, resume=None, initialize=None):
                 for _ in range(objective.num_iterations):
                     optimizer.zero_grad(set_to_none=True)
                     stats = dict.fromkeys(accumulated, 0.0)
+                    if sharded:
+                        # Agree on the unit count before any forward: a rank that finished
+                        # early must not enter a different collective. / 前向前先对齐单元数。
+                        units = sum(1 for _ in shared_state_indices(pack, config)) if pack else 0
+                        most = _max_units(units, context)
                     for unit in training_batches(model, backend, pack, rollouts, config):
                         losses = [(objective.loss_from_logits(d.logits, d.question, d.rollout), weight / normalization)
                                   for d, weight in unit]
@@ -199,11 +234,25 @@ def run(config, resume=None, initialize=None):
                             stats["loss"] += loss.item() * scale
                             for name, value in terms.items():
                                 stats[name] += value.item() * scale
+                    if sharded:
+                        # Pad with zero-loss units so every rank runs the same collectives.
+                        # 用零损失单元补齐，保证各 rank 的集合通信一致。
+                        for _ in range(most - units):
+                            dummy_unit(model, compiler).backward()
                     synchronize_gradients(model, context)
                     stats = dict(zip(stats, context.sum(list(stats.values()))))
-                    group_norms = {g["name"]: float(torch.stack([p.grad.detach().float().square().sum() for p in g["params"] if p.grad is not None]).sum().sqrt())
-                                   for g in groups if any(p.grad is not None for p in g["params"])}
-                    norm = torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], config.get("max_grad_norm", 1.0), error_if_nonfinite=True)
+                    if sharded:
+                        group_norms = fsdp_tools.group_norms(groups, context)
+                        norm = fsdp_tools.clip_gradients(model, context, config.get("max_grad_norm", 1.0))
+                    else:
+                        group_norms = {g["name"]: float(torch.stack([p.grad.detach().float().square().sum() for p in g["params"] if p.grad is not None]).sum().sqrt())
+                                       for g in groups if any(p.grad is not None for p in g["params"])}
+                        norm = torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], config.get("max_grad_norm", 1.0), error_if_nonfinite=True)
+                    if config.get("lr_warmup_steps") or config.get("lr_total_steps"):
+                        scale = lr_scale(progress["optimizer_steps"], config)
+                        for group in optimizer.param_groups:
+                            group.setdefault("base_lr", group["lr"])
+                            group["lr"] = group["base_lr"] * scale
                     optimizer.step()
                     progress["optimizer_steps"] += 1
                     for name, value in stats.items():
@@ -244,6 +293,40 @@ def run(config, resume=None, initialize=None):
             raise ValueError("No optimizer step: dataset has no labels or epochs/max_steps is zero")
         save()
     return model, compiler, progress
+
+
+def lr_scale(step, config):
+    """Linear warmup then optional cosine decay to lr_min_ratio. / 线性预热后余弦衰减。"""
+    warmup = config.get("lr_warmup_steps", 0)
+    total = config.get("lr_total_steps")
+    if warmup and step < warmup:
+        return (step + 1) / warmup
+    if not total:
+        return 1.0
+    floor = config.get("lr_min_ratio", 0.1)
+    progress = min(max((step - warmup) / max(total - warmup, 1), 0.0), 1.0)
+    return floor + (1 - floor) * 0.5 * (1 + math.cos(math.pi * progress))
+
+
+def _max_units(units, context):
+    if context.world_size == 1:
+        return units
+    import torch.distributed as dist
+    value = torch.tensor([units], device=context.device)
+    dist.all_reduce(value, op=dist.ReduceOp.MAX)
+    return int(value.item())
+
+
+_DUMMY = {}
+
+
+def dummy_unit(model, compiler):
+    """A zero loss through the language tower and decision head. / 经过语言塔与决策头的零损失。"""
+    if "state" not in _DUMMY:
+        _DUMMY["state"] = compiler.compile({"request": {"state": "Padding unit.", "questions": {
+            "q": {"type": "noul", "instructions": "Is this a padding unit?"}}}})
+    logits = model.forward_state_batch([_DUMMY["state"]])[0]
+    return torch.stack([z.float().sum() for z in logits]).sum() * 0.0
 
 
 def main():
