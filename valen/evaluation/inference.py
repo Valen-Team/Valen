@@ -13,6 +13,9 @@ from valen.modeling.qwen.attention import ATTENTION_IMPLEMENTATIONS, with_attent
 def answer(question, logits, temperature=1.0):
     if not math.isfinite(temperature) or temperature <= 0:
         raise ValueError("Calibration temperature must be finite and positive")
+    if question.kind == "bbox":
+        # Localization output: normalized box, point and confidence. / 定位输出。
+        return {"type": "bbox", **logits.decode()}
     if logits.ndim != 1 or len(logits) != len(question.keys) or not torch.isfinite(logits).all():
         raise ValueError("Expected one finite logit per candidate")
     scores = logits.double()

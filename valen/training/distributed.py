@@ -80,7 +80,9 @@ def broadcast_trainable(model, context):
 def synchronize_gradients(model, context, bucket_bytes=16 * 1024 * 1024):
     if context.world_size == 1:
         return
-    parameters = [p for p in model.parameters() if p.requires_grad]
+    from torch.distributed.tensor import DTensor
+    # FSDP-sharded tensors are reduce-scattered by FSDP itself. / 分片参数由 FSDP 归约。
+    parameters = [p for p in model.parameters() if p.requires_grad and not isinstance(p, DTensor)]
     used = torch.tensor([p.grad is not None for p in parameters], dtype=torch.int32, device=context.device)
     dist.all_reduce(used, op=dist.ReduceOp.MAX)
     # Globally unused parameters retain grad=None, avoiding AdamW weight decay.

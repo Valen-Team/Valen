@@ -81,3 +81,29 @@ def test_prefetch_preserves_timeout_raised_by_compiler():
         source.pending = ((id(order), 0, rng_state), future)
         with pytest.raises(TimeoutError, match="^media decoder timed out$"):
             source.take(order, 0, rng_state)
+
+
+def test_a_rejected_record_is_skipped_not_raised():
+    """One bad record must not raise: a raising rank strands its peers in a collective."""
+    import valen.data.prefetch as prefetch_module
+
+    class Rejecting:
+        def __init__(self):
+            self.calls = 0
+
+        def compile(self, record, rng=None, labeled_only=False):
+            self.calls += 1
+            if record["group_id"] == "bad":
+                raise ValueError("Reserved tokenizer control token in question/criteria")
+            return SimpleNamespace(questions=[object()], compute_tokens=10, media=[], inputs=None)
+
+    records = [{"group_id": name} for name in ("ok1", "bad", "ok2")]
+    compiler = Rejecting()
+    backend = SimpleNamespace(validate_state=lambda config, state: None)
+    config = {"tokens_per_step": 1000, "data_prefetch": False}
+    with prefetch_module.PackPrefetcher(records, compiler, backend, config) as source:
+        prepared = source.take([0, 1, 2], 0, random.Random(0).getstate())
+        assert len(prepared.states) == 2, "the good records must still be packed"
+        assert prepared.cursor == 3
+        assert len(source.skipped_records) == 1
+        assert "Reserved tokenizer control token" in source.skipped_records[0]["error"]

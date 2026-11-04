@@ -1,5 +1,6 @@
 import torch
 from valen.modeling.factory import backend_for_model
+from valen.modeling.qwen.grounding import box_loss
 
 
 def question_loss(logits, target, kind, rps_weight=0.0, brier_weight=0.0):
@@ -17,7 +18,7 @@ def question_loss(logits, target, kind, rps_weight=0.0, brier_weight=0.0):
 
 
 class SFTObjective:
-    metric_names = ("ce", "rps")
+    metric_names = ("ce", "rps", "box_ce", "box_l1", "box_giou")
     num_iterations = 1
 
     def __init__(self, config):
@@ -26,6 +27,7 @@ class SFTObjective:
             raise ValueError("sft_iterations must be a positive integer")
         self.rps_weight = config.get("rps_weight", 0.0)
         self.brier_weight = config.get("brier_weight", 0.0)
+        self.bbox_weight = config.get("bbox_loss_weight", 1.0)
         if self.brier_weight:
             self.metric_names = (*self.metric_names, "brier")
 
@@ -33,6 +35,9 @@ class SFTObjective:
         return [[None for _ in state.questions] for state in pack]
 
     def loss_from_logits(self, logits, question, rollout=None):
+        if question.kind == "bbox":
+            loss, terms = box_loss(logits, question.target)
+            return self.bbox_weight * loss, terms
         return question_loss(logits, question.target, question.kind, self.rps_weight, self.brier_weight)
 
     def loss(self, model, question, rollout):

@@ -9,6 +9,8 @@ import shutil
 import sys
 
 import torch
+from .grounding import grounding_signature
+from .identity import decision_arch_version, decision_identity
 
 from .hf_export import bundle_runtime, compare_outputs, dump, evaluate_records, log, sha_file, sha_tensor, validation_records
 
@@ -76,15 +78,21 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
     exported_config["dtype"] = "float32"
     for field in ("text_config", "vision_config"):
         exported_config[field]["dtype"] = "float32"
+    attention_mask_mode = config.get("full_attention_mask", "causal")
+    grounding_settings = grounding_signature(config)
     exported_config.update(
         valen_head={key: config[key] for key in
                     ("head_type", "head_width", "head_layers", "head_token_hidden_dim", "head_channel_hidden_dim")},
         qwen_execution=config["qwen_execution"], valen_max_length=config["max_length"],
         valen_media_kwargs=config["media_kwargs"],
         valen_backbone_autocast_dtype="bfloat16" if model.backbone_autocast_dtype == torch.bfloat16 else None,
+        valen_full_attention_mask=attention_mask_mode,
+        valen_grounding=grounding_settings,
+        # Generation label; the loading contract above is unchanged. / 代际标签，加载契约不变。
+        valen_decision_version=decision_arch_version(attention_mask_mode, grounding_settings),
     )
     standalone = modeling.ValenQwenForDecisionMaking(
-        configuration.ValenQwenConfig(**exported_config), backbone=model.backbone, head=model.head,
+        configuration.ValenQwenConfig(**exported_config), backbone=model.backbone, head=model.head, grounding=getattr(model, "grounding", None),
     ).eval().requires_grad_(False)
     wrapped_outputs = evaluate_records(standalone, modeling.Compiler, processor, config, records)
     wrapped_delta = compare_outputs(reference, wrapped_outputs, probability_tolerance=1e-6, logit_tolerance=1e-5)
@@ -134,6 +142,7 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
     dump(work / "reload_diagnostics.json", validation)
     provenance = {
         "format": "valen_qwen_full_sft_v1", "created_utc": datetime.now(timezone.utc).isoformat(),
+        **decision_identity(attention_mask_mode, grounding_settings),
         "model": output.name, "architecture": "Qwen3.5 + two-layer Mixer", "execution": config["qwen_execution"],
         "finetuning_type": "full", "source_checkpoint_sha256": source_sha, "training_step": step,
         "training_records": complete["last_metric"]["total_records"], "training_data_sha256": config.get("data_sha256"),

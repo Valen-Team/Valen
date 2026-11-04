@@ -21,6 +21,12 @@ def bundle_adapter_runtime(merged_model, stage):
                  "batching.py", "schema.py", "data_types.py", "tokenizer.json",
                  "tokenizer_config.json", "processor_config.json", "chat_template.jinja", "LICENSE"):
         shutil.copyfile(merged_model / name, stage / name)
+    # Runtime modules added after older merged snapshots. / 旧快照缺少的新运行时模块。
+    for name in ("block_attention.py", "grounding.py"):
+        source_file = merged_model / name
+        if not source_file.exists():
+            source_file = Path(__file__).parent / name
+        shutil.copyfile(source_file, stage / name)
     templates = Path(__file__).parent / "export_templates"
     for name in ("modeling_valen.py", "modeling_valen_lora.py"):
         shutil.copyfile(templates / name, stage / name)

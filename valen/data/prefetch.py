@@ -25,6 +25,7 @@ class PackPrefetcher(AbstractContextManager):
         self.pending = None
         self.cached_overflow = None
         self.active_record = None
+        self.skipped = []
 
     def _prepare(self, order, cursor, rng_state):
         started = time.monotonic()
@@ -43,7 +44,18 @@ class PackPrefetcher(AbstractContextManager):
                 rng.setstate(cached[3])
                 self.cached_overflow = None
             else:
-                compiled = self.compiler.compile(self.records[index], rng, labeled_only=True)
+                try:
+                    compiled = self.compiler.compile(self.records[index], rng, labeled_only=True)
+                except (ValueError, KeyError, TypeError) as exc:
+                    # A raise here would leave this rank's peers waiting in the next
+                    # collective until the NCCL timeout kills the job, so skip the record
+                    # and record it instead; callers can inspect ``skipped``.
+                    # 此处抛异常会让本 rank 退出，其余 rank 在集合通信里等到 NCCL 超时，
+                    # 整个任务因一条数据而死；改为跳过并记录。
+                    rng.setstate(before)
+                    self.skipped.append({"index": index, "error": str(exc)})
+                    cursor += 1
+                    continue
             if compiled.compute_tokens > self.budget:
                 raise ValueError(f"State {index} exceeds tokens_per_step: {compiled.compute_tokens} > {self.budget}")
             if pack and tokens + compiled.compute_tokens > self.budget:
@@ -59,6 +71,11 @@ class PackPrefetcher(AbstractContextManager):
             media.append({"state_index": index, "group_id": self.records[index]["group_id"],
                           "media": compiled.media})
         return PreparedPack(pack, tokens, cursor, rng.getstate(), media, time.monotonic() - started)
+
+    @property
+    def skipped_records(self):
+        """Records the compiler rejected, skipped to keep the collectives aligned."""
+        return list(self.skipped)
 
     def take(self, order, cursor, rng_state, prefetch_next=True):
         # Only returned packs become committed checkpoint cursor/RNG state.

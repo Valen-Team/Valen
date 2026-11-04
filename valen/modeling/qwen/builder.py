@@ -4,6 +4,8 @@ from .model import ValenQwen
 from ..manifest import read_base_manifest
 from .heads import head_signature
 from .attention import attention_implementation
+from .block_attention import MASKS, enable as enable_block_attention
+from .grounding import GroundingHead, grounding_signature
 from .pretrained import published_config, with_published_settings
 
 
@@ -11,6 +13,12 @@ def build_qwen(config):
     config = with_published_settings(config)
     head_config = head_signature(config)
     attention = attention_implementation(config)
+    mask = config.get("full_attention_mask", "causal")
+    if mask not in MASKS:
+        raise ValueError(f"full_attention_mask must be one of {MASKS}, got {mask!r}")
+    if mask != "causal" and attention == "eager":
+        raise ValueError(f"{mask} full attention requires sdpa or flash_attention_2")
+    grounding = grounding_signature(config)
     from transformers import AutoModel, Qwen3_5ForConditionalGeneration
     dtype = {"bf16": torch.bfloat16, "fp32": torch.float32}[config.get("dtype", "bf16")]
     published = published_config(config["model_path"]) is not None
@@ -37,7 +45,8 @@ def build_qwen(config):
     finetuning = config.get("finetuning_type", "lora")
     if finetuning == "full" and stage == "joint":
         # 全参数更新语言及视觉主干。 / Update the entire language and vision backbone.
-        backbone.float().requires_grad_(True)
+        # FSDP casts its local shards to FP32 after sharding. / FSDP 分片后再转 FP32。
+        (backbone if config.get("fsdp") else backbone.float()).requires_grad_(True)
     elif stage != "warmup":
         from peft import LoraConfig, get_peft_model
         # Enumerate exact language Linear paths. This covers DeltaNet, full attention
@@ -54,11 +63,17 @@ def build_qwen(config):
     if config.get("gradient_checkpointing", True) and stage != "warmup":
         backbone.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     model = ValenQwen(backbone, head_config=head_config, head=head)
+    if grounding is not None:
+        model.grounding = GroundingHead(backbone.config.text_config.hidden_size, grounding["width"], grounding["hidden"])
     if dtype == torch.bfloat16 and (published or (finetuning == "full" and stage == "joint")):
         model.backbone_autocast_dtype = torch.bfloat16
     model.base_manifest = read_base_manifest(config["model_path"])
-    model.to(config.get("device", "cuda"))
+    # FSDP shards on CPU first, then moves local shards. / FSDP 先在 CPU 分片再上 GPU。
+    model.to("cpu" if config.get("fsdp") else config.get("device", "cuda"))
     model.lora_targets = targets
+    model.full_attention_mask = mask
+    if mask != "causal":
+        enable_block_attention(backbone)
     model.attention_backends = {
         name: getattr(getattr(backbone.config, field, None), "_attn_implementation", attention)
         for name, field in (("text", "text_config"), ("vision", "vision_config"))}
@@ -66,13 +81,15 @@ def build_qwen(config):
 
 
 def qwen_optimizer_groups(model, config):
-    groups = {"head": [], "lora": [], "language": [], "merger": [], "vision": []}
-    rates = {"head": 2e-4, "lora": 5e-5, "language": 1e-5, "merger": 1e-5, "vision": 2e-6}
+    groups = {"head": [], "grounding": [], "lora": [], "language": [], "merger": [], "vision": []}
+    rates = {"head": 2e-4, "grounding": config.get("head_lr", 2e-4), "lora": 5e-5, "language": 1e-5, "merger": 1e-5, "vision": 2e-6}
     for name, parameter in model.named_parameters():
         if not parameter.requires_grad:
             continue
         if name.startswith("head."):
             group = "head"
+        elif name.startswith("grounding."):
+            group = "grounding"
         elif "lora_" in name:
             group = "lora"
         elif ".visual.merger." in name:

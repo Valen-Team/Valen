@@ -4,6 +4,8 @@ from torch import nn
 from valen import MODEL_NAME
 from .heads import DecisionHead, build_head
 from .batching import branch_batches, collate_branches
+from .block_attention import enable as enable_block_attention, forward_kwargs
+from .grounding import BoxFeatures
 
 
 class ValenQwen(nn.Module):
@@ -18,21 +20,29 @@ class ValenQwen(nn.Module):
         self.head = head if head is not None else build_head(backbone.config.text_config.hidden_size,
                                dict({"projection_dim": projection_dim}, **(head_config or {})))
         self.backbone_autocast_dtype = None
+        self.full_attention_mask = "causal"
+        # Optional bbox head (Valen-Decision-1.5). / 可选定位头。
+        self.grounding = None
 
-    def _hidden(self, inputs):
+    def _hidden(self, inputs, branches=None):
         # 保留 FP32 参数更新，前向使用 BF16。 / FP32 updates with BF16 backbone compute.
         device = next(self.backbone.parameters()).device
         context = (torch.autocast(device.type, dtype=self.backbone_autocast_dtype)
                    if self.backbone_autocast_dtype is not None else nullcontext())
+        mask = getattr(self, "full_attention_mask", "causal")
+        if mask != "causal":
+            # 前缀为 state，后缀为题目区；每行一个边界。 / One state/question boundary per row.
+            enable_block_attention(self.backbone)
+        kwargs = forward_kwargs(mask, branches, device)
         with context:
-            return self.backbone(**inputs, use_cache=False, return_dict=True).last_hidden_state
+            return self.backbone(**inputs, use_cache=False, return_dict=True, **kwargs).last_hidden_state
 
     def forward(self, question):
         device = next(self.backbone.parameters()).device
         outputs = []
         for branch in question.branches:
             inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in branch.inputs.items()}
-            hidden = self._hidden(inputs)
+            hidden = self._hidden(inputs, [branch])
             outputs.append(self.head.score_features(self.head.extract_features(hidden, branch)))
         return torch.cat(outputs)
 
@@ -42,7 +52,7 @@ class ValenQwen(nn.Module):
         features = []
         for branch in question.branches:
             inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in branch.inputs.items()}
-            hidden = self._hidden(inputs)
+            hidden = self._hidden(inputs, [branch])
             features.append(self.head.extract_features(hidden, branch))
         return features
 
@@ -54,12 +64,12 @@ class ValenQwen(nn.Module):
             raise ValueError("Shared-state features require compiled shared inputs")
         device = next(self.backbone.parameters()).device
         inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in state.inputs.items()}
-        hidden = self._hidden(inputs)
+        hidden = self._hidden(inputs, [state.questions[0].branches[0]])
         return self._state_features(hidden, state)
 
     def _state_features(self, hidden, state):
-        return [[self.head.extract_features(hidden, branch) for branch in q.branches]
-                for q in state.questions]
+        return [[(self.grounding if q.kind == "bbox" else self.head).extract_features(hidden, branch)
+                 for branch in q.branches] for q in state.questions]
 
     def forward_state(self, state):
         return [self.score_features(features) for features in self.extract_state_features(state)]
@@ -82,7 +92,7 @@ class ValenQwen(nn.Module):
         for batch in branch_batches(representatives, max_tokens):
             inputs = collate_branches([branch for _, branch in batch], pad_token_id)
             inputs = {key: value.to(device) for key, value in inputs.items()}
-            hidden = self._hidden(inputs)
+            hidden = self._hidden(inputs, [branch for _, branch in batch])
             for row, (index, _) in enumerate(batch):
                 original = indices[index]
                 features = self._state_features(hidden[row:row + 1], states[original])
@@ -100,12 +110,16 @@ class ValenQwen(nn.Module):
         for batch in branch_batches(questions, max_tokens):
             inputs = collate_branches([branch for _, branch in batch], pad_token_id)
             inputs = {key: value.to(device) for key, value in inputs.items()}
-            hidden = self._hidden(inputs)
+            hidden = self._hidden(inputs, [branch for _, branch in batch])
             for row, (question_index, branch) in enumerate(batch):
                 features = self.head.extract_features(hidden[row:row + 1], branch)
                 outputs[question_index].append(self.head.score_features(features))
         return [torch.cat(branches) for branches in outputs]
 
     def score_features(self, features, head=None):
+        if features and isinstance(features[0], BoxFeatures):
+            if getattr(self, "grounding", None) is None:
+                raise ValueError("bbox questions require a model with grounding_head")
+            return self.grounding(features[0])
         head = self.head if head is None else head
         return torch.cat([head.score_features(hidden) for hidden in features])
