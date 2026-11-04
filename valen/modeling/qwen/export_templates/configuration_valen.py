@@ -17,8 +17,9 @@ class ValenQwenConfig(Qwen3_5Config):
         if valen_backbone_autocast_dtype not in {None, "bfloat16"}:
             raise ValueError("valen_backbone_autocast_dtype must be None or bfloat16")
         self.valen_backbone_autocast_dtype = valen_backbone_autocast_dtype
-        if valen_full_attention_mask not in {"causal", "block_bidirectional", "prefix_lm", "question_blocks"}:
-            raise ValueError("valen_full_attention_mask must be causal, block_bidirectional, prefix_lm or question_blocks")
+        from .block_attention import MASKS
+        if valen_full_attention_mask not in MASKS:
+            raise ValueError(f"valen_full_attention_mask must be one of {MASKS}")
         self.valen_full_attention_mask = valen_full_attention_mask
         self.valen_grounding = valen_grounding
         super().__init__(**kwargs)

@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 
 ATTENTION_NAME = "valen_block_bidirectional"
-MASKS = ("causal", "block_bidirectional", "prefix_lm", "question_blocks")
+MASKS = ("causal", "block_bidirectional", "prefix_lm", "question_blocks", "bbox_blocks")
 # Segment ids: prefix, shared suffix glue, padding; questions are 1, 2, ...
 PREFIX, COMMON, PADDING = -1, 0, -2
 _registered = False
@@ -49,11 +49,21 @@ def forward_kwargs(mask, branches, device):
         return {}
     kwargs = {"valen_prefix_lengths": torch.tensor([b.context_span[1] for b in branches], device=device),
               "valen_mask_mode": mask}
-    if mask == "question_blocks":
+    if mask in ("question_blocks", "bbox_blocks"):
         if any(getattr(b, "segments", None) is None for b in branches):
-            raise ValueError("question_blocks requires compiler segment ids (shared_state execution)")
+            raise ValueError(f"{mask} requires compiler segment ids (shared_state execution)")
         length = max(b.segments.numel() for b in branches)
-        rows = [F.pad(b.segments, (0, length - b.segments.numel()), value=PADDING) for b in branches]
+        rows = []
+        for branch in branches:
+            segments = branch.segments
+            if mask == "bbox_blocks":
+                # Localization questions stay isolated; decision questions share one block,
+                # which R1 showed helps them. / 定位题单独成块，决策题共用一块。
+                bbox = torch.tensor(branch.bbox_segments or (), dtype=segments.dtype)
+                suffix = segments > COMMON
+                segments = torch.where(suffix & ~torch.isin(segments, bbox),
+                                       torch.ones_like(segments), segments)
+            rows.append(F.pad(segments, (0, length - segments.numel()), value=PADDING))
         kwargs["valen_segments"] = torch.stack(rows).to(device)
     return kwargs
 
@@ -90,9 +100,9 @@ def block_attention_forward(module, query, key, value, attention_mask, dropout=0
         lengths = attention_mask.to(query.device).long().sum(-1)
     if bool(((prefix < 1) | (prefix > lengths)).any()):
         raise ValueError("Prefix lengths must lie within each row")
-    if valen_mask_mode == "question_blocks":
+    if valen_mask_mode in ("question_blocks", "bbox_blocks"):
         if valen_segments is None:
-            raise ValueError("question_blocks requires valen_segments")
+            raise ValueError(f"{valen_mask_mode} requires valen_segments")
         segments = valen_segments.to(query.device)[:, :length]
         return _dense(query, key, value, segment_mask(segments, prefix, lengths), dropout, scaling), None
     if valen_mask_mode not in ("block_bidirectional", "prefix_lm"):

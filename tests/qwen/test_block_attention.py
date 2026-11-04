@@ -114,3 +114,24 @@ def test_prefix_lm_matches_dense_on_cpu():
     k2 = k.clone(); k2[:, :, 6] += 3  # last token changes nothing before it
     out2, _ = block_attention_forward(Module(), q, k2, v, mask2d, valen_prefix_lengths=prefix, valen_mask_mode="prefix_lm")
     assert torch.allclose(out[0, :6], out2[0, :6])
+
+
+def test_bbox_blocks_isolate_only_localization_questions():
+    """bbox questions keep their own block; decision questions share one."""
+    from types import SimpleNamespace
+    from valen.modeling.qwen.block_attention import forward_kwargs
+    # prefix(2) | glue(1) | q1 choice(2) | q2 bbox(2) | q3 choice(1) | readouts(3)
+    segments = torch.tensor([-1, -1, 0, 1, 1, 2, 2, 3, 1, 2, 3])
+    branch = SimpleNamespace(context_span=(0, 2), segments=segments, bbox_segments=(2,))
+    kwargs = forward_kwargs("bbox_blocks", [branch], "cpu")
+    merged = kwargs["valen_segments"][0]
+    # Decision questions 1 and 3 are merged into block 1; the bbox question keeps block 2.
+    assert merged.tolist() == [-1, -1, 0, 1, 1, 2, 2, 1, 1, 2, 1]
+    mask = segment_mask(kwargs["valen_segments"], torch.tensor([2]), torch.tensor([11]))[0, 0]
+    bbox_rows = [5, 6, 9]
+    decision_rows = [3, 4, 7, 8, 10]
+    for a in bbox_rows:
+        assert not mask[a, decision_rows].any() and mask[a, bbox_rows].all()
+    for a in decision_rows:
+        assert mask[a, decision_rows].all() and not mask[a, bbox_rows].any()
+        assert mask[a, :2].all() and mask[a, 2]

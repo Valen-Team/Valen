@@ -18,6 +18,7 @@ class Branch:
     candidate_spans: list | None = None
     # Valen-next: per-token block ids (question_blocks) and bbox image tokens.
     segments: torch.Tensor | None = None
+    bbox_segments: tuple | None = None
     sequence_length: int | None = None
     image_positions: torch.Tensor | None = None
     image_grid: tuple | None = None
@@ -277,10 +278,12 @@ class Compiler:
             inputs["mm_token_type_ids"] = torch.cat([base["mm_token_type_ids"],
                                                     base["mm_token_type_ids"].new_zeros((1, len(suffix)))], dim=1)
         row_segments = torch.tensor([-1] * base_length + segments, dtype=torch.long)
+        bbox_segments = tuple(i + 1 for i, q in enumerate(compiled) if q.kind == "bbox")
         for question in compiled:
             question.branches[0].inputs = inputs
             question.branches[0].segments = row_segments
             question.branches[0].sequence_length = length
+            question.branches[0].bbox_segments = bbox_segments
         if labeled_only:
             compiled = [question for question in compiled if question.target is not None]
         return CompiledState(compiled, length, length, media, inputs)
