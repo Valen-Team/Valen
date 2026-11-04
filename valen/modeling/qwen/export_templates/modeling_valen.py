@@ -14,6 +14,7 @@ from .decisions import to_internal, to_public, local_images
 from .batching import collate_branches
 from .schema import candidates
 from .data_types import QuestionSpec
+from .block_attention import enable as enable_block_attention
 
 
 class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
@@ -36,6 +37,8 @@ class ValenQwenForDecisionMaking(Qwen3_5PreTrainedModel):
             torch.bfloat16 if getattr(config, "valen_backbone_autocast_dtype", None) == "bfloat16" else None
         )
         self._processor = None
+        # Trained mask on full-attention layers; applied per forward. / 训练时的 full-attention mask。
+        self.full_attention_mask = getattr(config, "valen_full_attention_mask", "causal")
         # Supplied weights are already trained: do not reinitialize them.
         # 传入的参数已训练完成，不能再次调用初始化覆盖它们。
         if backbone is not None:

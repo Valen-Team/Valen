@@ -82,6 +82,7 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
         qwen_execution=config["qwen_execution"], valen_max_length=config["max_length"],
         valen_media_kwargs=config["media_kwargs"],
         valen_backbone_autocast_dtype="bfloat16" if model.backbone_autocast_dtype == torch.bfloat16 else None,
+        valen_full_attention_mask=config.get("full_attention_mask", "causal"),
     )
     standalone = modeling.ValenQwenForDecisionMaking(
         configuration.ValenQwenConfig(**exported_config), backbone=model.backbone, head=model.head,

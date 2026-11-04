@@ -104,6 +104,8 @@ class QwenBackend(ArchitectureBackend):
         from .heads import head_signature
         if head_signature(previous) != head_signature(config):
             raise ValueError("Initialization backbone/head mismatch")
+        if previous.get("full_attention_mask", "causal") != config.get("full_attention_mask", "causal"):
+            raise ValueError("Initialization full_attention_mask mismatch")
 
     def adaptation(self, model, config):
         from .heads import head_signature
@@ -114,6 +116,7 @@ class QwenBackend(ArchitectureBackend):
                 "parameter_dtype": str(next(model.parameters()).dtype),
                 "backbone_autocast_dtype": str(getattr(model, "backbone_autocast_dtype", None)),
                 "qwen_execution": config.get("qwen_execution", "question"),
+                "full_attention_mask": config.get("full_attention_mask", "causal"),
                 "text": "full" if full else "lora" if stage != "warmup" else "frozen",
                 "vision_merger": stage in {"joint", "vision_top"},
                 "vision_unfreeze_layers": len(model.backbone.visual.blocks) if full else 4 if stage == "vision_top" else 0,

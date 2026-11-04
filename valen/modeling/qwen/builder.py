@@ -4,6 +4,7 @@ from .model import ValenQwen
 from ..manifest import read_base_manifest
 from .heads import head_signature
 from .attention import attention_implementation
+from .block_attention import MASKS, enable as enable_block_attention
 from .pretrained import published_config, with_published_settings
 
 
@@ -11,6 +12,11 @@ def build_qwen(config):
     config = with_published_settings(config)
     head_config = head_signature(config)
     attention = attention_implementation(config)
+    mask = config.get("full_attention_mask", "causal")
+    if mask not in MASKS:
+        raise ValueError(f"full_attention_mask must be one of {MASKS}, got {mask!r}")
+    if mask == "block_bidirectional" and attention == "eager":
+        raise ValueError("block_bidirectional full attention requires sdpa or flash_attention_2")
     from transformers import AutoModel, Qwen3_5ForConditionalGeneration
     dtype = {"bf16": torch.bfloat16, "fp32": torch.float32}[config.get("dtype", "bf16")]
     published = published_config(config["model_path"]) is not None
@@ -59,6 +65,9 @@ def build_qwen(config):
     model.base_manifest = read_base_manifest(config["model_path"])
     model.to(config.get("device", "cuda"))
     model.lora_targets = targets
+    model.full_attention_mask = mask
+    if mask == "block_bidirectional":
+        enable_block_attention(backbone)
     model.attention_backends = {
         name: getattr(getattr(backbone.config, field, None), "_attn_implementation", attention)
         for name, field in (("text", "text_config"), ("vision", "vision_config"))}
