@@ -7,10 +7,13 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 ## [Unreleased]
 
 ### Code
+- Add the Valen-Decision-1.5 architecture on the existing `qwen` backend: block-structured full attention (`full_attention_mask`, applied only to the full-attention layers while linear attention stays causal), the `bbox` question type with a grounding head, and FSDP2 training for large backbones. Omitting the new options reproduces the previous generation.
+- Name the architecture generation explicitly in `valen/modeling/qwen/identity.py`; exports gain a `valen_decision_version` config field and identity fields in the manifest. The loading contract is unchanged — `model_type` stays `valen_qwen` and the exported `auto_map` classes keep their names — so published checkpoints and the vLLM/SGLang adapters continue to load.
 - Add probability calibration, routing policies and released-model evidence.
 - Remove the `release-evidence` workflow, `validate_release_report.py` and `validation/release-gate.json`; the release checklist in `scripts/validation/README.md` now stands on its own.
 
 ### Docs
+- Add `valen/modeling/qwen/DECISION_1_5.md`, the architecture contract for Valen-Decision-1.5.
 - Add `CONTRIBUTING.md` and `SECURITY.md`.
 - Add this changelog, a releasing guide in `CONTRIBUTING.md`, and the 0.3.0 version in `pyproject.toml` and the citation. Trim README News to the three latest entries.
 - Add community projects and the Jev-ToM community evaluation.

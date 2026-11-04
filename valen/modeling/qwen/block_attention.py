@@ -58,7 +58,7 @@ def forward_kwargs(mask, branches, device):
             segments = branch.segments
             if mask == "bbox_blocks":
                 # Localization questions stay isolated; decision questions share one block,
-                # which R1 showed helps them. / 定位题单独成块，决策题共用一块。
+                # which suits them better. / 定位题单独成块，决策题共用一块。
                 bbox = torch.tensor(branch.bbox_segments or (), dtype=segments.dtype)
                 suffix = segments > COMMON
                 segments = torch.where(suffix & ~torch.isin(segments, bbox),
