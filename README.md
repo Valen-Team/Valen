@@ -1,7 +1,7 @@
 <p align="center">
   <img src="assets/branding/valen-mark-white.png" alt="Valen" width="112">
 </p>
-<h1 align="center">Valen</h1>
+<h1 align="center">Valen-Decision</h1>
 <p align="center"><strong>Fast Decisions. Continuous Evolution.</strong></p>
 <p align="center">A multimodal System One decision model. Text, images and video in; structured decision probabilities out.</p>
 

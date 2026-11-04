@@ -1,7 +1,7 @@
 <p align="center">
   <img src="assets/branding/valen-mark-white.png" alt="Valen" width="112">
 </p>
-<h1 align="center">Valen</h1>
+<h1 align="center">Valen-Decision</h1>
 <p align="center"><strong>快速决策，持续进化。</strong></p>
 <p align="center">多模态 System One 决策模型。输入文本、图像和视频，输出结构化决策概率。</p>
 
