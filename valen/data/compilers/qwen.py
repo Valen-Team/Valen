@@ -215,30 +215,41 @@ class Compiler:
         model may choose causal, prefix/suffix or per-question block attention.
         """
         base_length = base["input_ids"].shape[1]
-        suffix, compiled, segments = [], [], []
+        suffix, compiled, segments = [], [], [-1] * base_length
         images = self._image_tokens(base)
+        tokenizer = self.tokenizer
+        encode = tokenizer.encode
 
-        def append(text, span=None, segment=0):
+        def append(text, span=None):
             start = base_length + len(suffix)
             if span is None:
-                ids = self.tokenizer.encode(text, add_special_tokens=False)
+                ids = encode(text, add_special_tokens=False)
                 suffix.extend(ids)
-                segments.extend([segment] * len(ids))
                 return None
-            encoded = self.tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+            encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
             suffix.extend(encoded["input_ids"])
-            segments.extend([segment] * len(encoded["input_ids"]))
-            indices = [i for i, (a, b) in enumerate(encoded["offset_mapping"]) if a < span[1] and b > span[0]]
-            if not indices:
+            span_start, span_end = span
+            offsets = list(encoded["offset_mapping"])
+            for first, (a, b) in enumerate(offsets):
+                if a < span_end and b > span_start:
+                    break
+            else:
                 raise ValueError("Empty token span for decision role")
-            return start + indices[0], start + indices[-1] + 1
+            last = len(offsets) - 1
+            for a, b in reversed(offsets):
+                if a < span_end and b > span_start:
+                    break
+                last -= 1
+            return start + first, start + last + 1
 
         append("<|im_start|>user\n")
+        segments.extend([0] * len(suffix))
         for index, (qid, question, pairs, target) in enumerate(selected):
             block = index + 1
             for value in [question["instructions"]] + [v for pair in pairs for v in pair]:
-                if any(t in value for t in self.tokenizer.all_special_tokens):
-                    raise ValueError("Reserved tokenizer control token in question/criteria")
+                for token in self.tokenizer.all_special_tokens:
+                    if token in value:
+                        raise ValueError("Reserved tokenizer control token in question/criteria")
             prefix = f"Question {index + 1}\nTask: {question['type']}\nQuestion: "
             positions, spans = [], []
             if question["type"] == "bbox":
@@ -246,15 +257,15 @@ class Compiler:
                 if image >= len(images):
                     raise ValueError(f"{qid}: bbox refers to image {image}, state has {len(images)}")
                 instruction = append(prefix + question["instructions"] + f"\nImage: {image + 1}\n",
-                                     (len(prefix), len(prefix) + len(question["instructions"])), block)
+                                     (len(prefix), len(prefix) + len(question["instructions"])))
             else:
                 instruction = append(prefix + question["instructions"] + "\nCandidates:\n",
-                                     (len(prefix), len(prefix) + len(question["instructions"])), block)
+                                     (len(prefix), len(prefix) + len(question["instructions"])))
                 for key, description in pairs:
                     prefix = key + ": " if question["type"] != "score" else ""
-                    spans.append(append(prefix + description, (len(prefix), len(prefix) + len(description)), block))
+                    spans.append(append(prefix + description, (len(prefix), len(prefix) + len(description))))
                     positions.append(base_length + len(suffix) - 1)
-                    append("\n", segment=block)
+                    append("\n")
             # Inputs and the decision position are filled after all schemas are appended.
             branch = Branch({}, positions, -1, (0, base_length), instruction, spans)
             if question["type"] == "bbox":
@@ -262,11 +273,14 @@ class Compiler:
             keys = [key for key, _ in pairs]
             compiled.append(Question(qid, question["type"], keys, [v for _, v in pairs], [branch],
                                      question_target(question, target, keys), not media))
+            segments.extend([block] * (base_length + len(suffix) - len(segments)))
         append("<|im_end|>\n<|im_start|>assistant\n")
+        segments.extend([0] * (base_length + len(suffix) - len(segments)))
         for index, question in enumerate(compiled):
-            append(f"Question {index + 1} Decision:", segment=index + 1)
+            append(f"Question {index + 1} Decision:")
             question.branches[0].decision_position = base_length + len(suffix) - 1
-            append("\n", segment=index + 1)
+            append("\n")
+            segments.extend([index + 1] * (base_length + len(suffix) - len(segments)))
         length = base_length + len(suffix)
         if length > self.max_length:
             raise ValueError(f"Shared state: {length} tokens exceed max_length={self.max_length}; no truncation")
@@ -277,7 +291,7 @@ class Compiler:
         if "mm_token_type_ids" in base:
             inputs["mm_token_type_ids"] = torch.cat([base["mm_token_type_ids"],
                                                     base["mm_token_type_ids"].new_zeros((1, len(suffix)))], dim=1)
-        row_segments = torch.tensor([-1] * base_length + segments, dtype=torch.long)
+        row_segments = torch.tensor(segments, dtype=torch.long)
         bbox_segments = tuple(i + 1 for i, q in enumerate(compiled) if q.kind == "bbox")
         for question in compiled:
             question.branches[0].inputs = inputs
