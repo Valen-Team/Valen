@@ -6,9 +6,8 @@
 <p align="center">Valen-Decision is a multimodal System One decision model. Text, images and video in; structured decision probabilities out.</p>
 
 <p align="center">
-  <a href="https://huggingface.co/Valen-Team/Valen-0.8B"><img src="https://img.shields.io/badge/Valen-0.8B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 0.8B"></a>
-  <a href="https://huggingface.co/Valen-Team/Valen-2B"><img src="https://img.shields.io/badge/Valen-2B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 2B"></a>
-  <a href="https://huggingface.co/Valen-Team/Valen-4B"><img src="https://img.shields.io/badge/Valen-4B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 4B"></a>
+  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8%2F2%2F4%2F9%2F27B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8/2/4/9/27B"></a>
+  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.0-0.8%2F2%2F4B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.0: 0.8/2/4B"></a>
   <a href="https://huggingface.co/datasets/Valen-Team/VisualDecisionBench"><img src="https://img.shields.io/badge/Dataset-VisualDecisionBench-3964FE?style=flat&amp;labelColor=1E232C" alt="VisualDecisionBench"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-555555?style=flat&amp;labelColor=1E232C" alt="Apache 2.0"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-555555?style=flat&amp;labelColor=1E232C" alt="Python 3.10+"></a>
@@ -27,22 +26,23 @@
   <a href="#introduction">Introduction</a> · <a href="#version-selection">Choose a version</a> · <a href="#model-downloads">Models &amp; datasets</a> · <a href="#api-usage">API usage</a> · <a href="#quick-start">Quick start</a> · <a href="#onnx-sdk">ONNX &amp; SDKs</a> · <a href="#demos">Demos</a> · <a href="#results">Evaluation</a> · <a href="#community-projects">Community</a> · <a href="https://valen-team.github.io/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
+<a id="introduction"></a>
+
+## Introduction
+
+Valen-Decision (万澜) brings visual perception to System One decision-making. Inspired by [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), it evaluates text, images and video against task instructions and returns probabilities over supplied candidates, giving software a structured decision interface. The repository includes the model implementation, data processing, SFT and experimental RLCD training, and inference and evaluation commands, with support for training on your own data.
+
 <a id="version-selection"></a>
 
 ## Choose a version
 
 For a first try, use the [web experience or free API](https://valen-team.github.io/) without downloading weights. [Which version should I choose?](https://valen-team.github.io/docs/valen/choosing/) · [GGUF local service](https://valen-team.github.io/docs/valen/gguf/)
 
-<a id="introduction"></a>
-
-## Introduction
-
-Valen (万澜) brings visual perception to System One decision-making. Inspired by [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), it evaluates text, images and video against task instructions and returns probabilities over supplied candidates, giving software a structured decision interface. The repository includes the model implementation, data processing, SFT and experimental RLCD training, and inference and evaluation commands, with support for training on your own data.
-
 <a id="news"></a>
 
 ## News
 
+- **2026-11-09**: Released [Valen-Decision-1.5](https://huggingface.co/Valen-Team), covering every size from 0.8B to 27B. It adopts a new block-bidirectional attention mechanism, delivering state-of-the-art multimodal capability while keeping strong text capability. Valen-Decision-1.5 also uses a dual-head design that supports bbox output, showing strong grounding ability.
 - **2026-10-29**: The [Python SDK](https://github.com/Valen-Team/valen-sdk-python#compare-with-an-llm) adds `Valen.llm()`: send the same questions to GPT, Claude or Gemini and get the same typed answers back, to compare decisions, tokens and latency with Valen in your own code.
 - **2026-10-29**: Released the [Valen agent skill](https://github.com/Valen-Team/skills) for Claude Code, Cursor, Codex and other coding agents, with [`llms.txt`](https://valen-team.github.io/llms.txt), Markdown versions of every docs page and an [OpenAPI spec](https://valen-team.github.io/openapi.json). [JevalKit](https://github.com/Valen-Team/JevalKit) adds OpenAI, Anthropic and Gemini LLM baselines for side-by-side comparison.
 - **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; run them with the [Valen-patched llama.cpp and Ollama](https://valen-team.github.io/docs/valen/gguf/), which return candidate probabilities instead of generated text.
@@ -57,9 +57,14 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
 
 | Model | Native weights / Transformers | ONNX Runtime | GGUF / custom runtime |
 | --- | --- | --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
+| Valen-Decision-1.5 0.8B | [🤗 Valen-Decision-1.5-0.8B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B) | [🤗 Valen-Decision-1.5-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-ONNX) | [🤗 Valen-Decision-1.5-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-GGUF) |
+| Valen-Decision-1.5 2B | [🤗 Valen-Decision-1.5-2B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B) | [🤗 Valen-Decision-1.5-2B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-ONNX) | [🤗 Valen-Decision-1.5-2B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-GGUF) |
+| Valen-Decision-1.5 4B | [🤗 Valen-Decision-1.5-4B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B) | [🤗 Valen-Decision-1.5-4B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-ONNX) | [🤗 Valen-Decision-1.5-4B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-GGUF) |
+| Valen-Decision-1.5 9B | [🤗 Valen-Decision-1.5-9B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B) | [🤗 Valen-Decision-1.5-9B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-ONNX) | [🤗 Valen-Decision-1.5-9B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-GGUF) |
+| Valen-Decision-1.5 27B | [🤗 Valen-Decision-1.5-27B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B) | [🤗 Valen-Decision-1.5-27B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-ONNX) | [🤗 Valen-Decision-1.5-27B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-GGUF) |
+| Valen-Decision-1.0 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [🤗 Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
+| Valen-Decision-1.0 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [🤗 Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
+| Valen-Decision-1.0 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [🤗 Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
 | Valen-preview-0923 (earlier release) | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) contains Image and Video subsets for visual decision evaluation. Earlier releases include [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) for training, [General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) for evaluation, and [Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) for game training and evaluation.
@@ -68,11 +73,36 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
 
 ## Demos
 
-**Valen-Decision** image and video decision-making — click the preview to watch the full demo.
+**Valen-Decision-1.5** image and video decision-making: boxes, probabilities, choices and scores from one forward pass. Click the preview to watch the full video.
 
 <p align="center">
-  <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen demo preview. Click to watch the full video." width="1000"></a>
+  <a href="assets/demos/valen-decision-1.5-demo.mp4"><img src="assets/demos/valen-decision-1.5-demo.gif" alt="Valen-Decision-1.5 demo: boxes, probabilities, choices and scores from one forward pass. Click to watch the full video." width="85%"></a>
 </p>
+
+<details>
+<summary><b>Valen-Decision-1.0 demos</b></summary>
+
+<br>
+
+<table width="100%">
+  <tr>
+    <td align="center" valign="middle">
+      <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen-Decision-1.0 image and video decision demo. Click to watch the full video." height="320"></a><br>
+      <b>Image and video decisions</b>
+    </td>
+    <td align="center" valign="middle">
+      <a href="assets/demos/valen-decision-1.0-games.mp4"><img src="assets/demos/valen-decision-1.0-games.gif" alt="Valen-Decision-1.0 game rollouts: Sokoban, Frozen Lake, Maze and Parkour Runner. Click to watch the full video." height="320"></a><br>
+      <b>Game decisions</b>
+    </td>
+  </tr>
+</table>
+
+Click either preview to watch the full video.
+
+</details>
+
+<!--
+Game decision-making demos are hidden for now; the files stay in assets/demos/games/.
 
 **Game decision-making** — five successful Valen-Decision rollouts. Click any preview to watch the full video.
 
@@ -102,6 +132,7 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
     </td>
   </tr>
 </table>
+-->
 
 <a id="results"></a>
 
@@ -110,6 +141,15 @@ Older entries and the per-version code changes are in [CHANGELOG.md](CHANGELOG.m
 [JevalKit](https://github.com/Valen-Team/JevalKit) is our evaluation toolkit for decision models, with unified model interfaces, benchmark integration, and scoring protocols. Use it to evaluate and compare decision models across supported benchmarks.
 
 Valen is also integrated into the [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index). Visit the index for its evaluation results and comparisons with other decision models.
+
+**Valen-Decision-1.5** delivers state-of-the-art multimodal decision-making while keeping strong text decision-making. The Valen-Decision-1.5 series also performs strongly on tasks that output bounding boxes. The figure below shows the evaluation results of Valen-Decision-1.5-27B.
+
+<p align="center">
+  <a href="assets/figures/evaluation-20261108/valen-decision-1.5-27b.png"><img src="assets/figures/evaluation-20261108/valen-decision-1.5-27b.png" alt="Valen-Decision-1.5-27B against WeMM-JEV-27B, Xing-VL2.0-Decision, Pplx-Decider, vLLM-SR d3-turbo and Amos 1 Large: Decision Index Vision 82.8, Decision Index Text 74.6, TypedDecisions 79.4, VisualDecisionBench-Image 89.9, JevAltBench 95.2, DecisionBench 84.1, Procedural Typed Decisions 97.2, ZhDecisionBench 91.9." width="1400"></a>
+</p>
+
+<details>
+<summary><b>Valen-Decision-1.0 results (0.8B / 2B / 4B)</b></summary>
 
 **Visual decisions at 0.8B, 2B and 4B.** Valen-Decision uses Qwen3.5 + Mixer with shared-state inference, trained with SFT on millions of samples. The evaluation compares these checkpoints with published decision models on **VisualDecisionBench-Image, VisualDecisionBench-Video and public JevBench**.
 
@@ -124,6 +164,8 @@ Valen is also integrated into the [Jev Decision Index](https://huggingface.co/sp
 <p align="center">
   <a href="assets/figures/evaluation-20261006/jevbench.png"><img src="assets/figures/evaluation-20261006/jevbench.png" alt="Valen public JevBench accuracy: 0.8B 77.92%, 2B 83.55%, 4B 83.12%. InternDecision 4B scores 86.58%." width="1400"></a>
 </p>
+
+</details>
 
 ### Choose what to automate
 
@@ -470,7 +512,7 @@ Contributions to Valen are welcome. Open an [issue](https://github.com/Valen-Tea
 Scan the QR code below to join the Valen WeChat group, discuss the project and share your experiments.
 
 <p align="center">
-  <img src="assets/figures/wechat_1021.png" alt="QR code for the Valen WeChat discussion group" width="200">
+  <img src="assets/figures/wechat_1116.jpg" alt="QR code for the Valen WeChat discussion group" width="240">
 </p>
 
 <a id="license-and-acknowledgments"></a>
