@@ -6,9 +6,8 @@
 <p align="center">Valen-Decision 是多模态 System One 决策模型。输入文本、图像和视频，输出结构化决策概率。</p>
 
 <p align="center">
-  <a href="https://huggingface.co/Valen-Team/Valen-0.8B"><img src="https://img.shields.io/badge/Valen-0.8B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 0.8B"></a>
-  <a href="https://huggingface.co/Valen-Team/Valen-2B"><img src="https://img.shields.io/badge/Valen-2B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 2B"></a>
-  <a href="https://huggingface.co/Valen-Team/Valen-4B"><img src="https://img.shields.io/badge/Valen-4B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen 4B"></a>
+  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8%2F2%2F4%2F9%2F27B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8/2/4/9/27B"></a>
+  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.0-0.8%2F2%2F4B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.0: 0.8/2/4B"></a>
   <a href="https://huggingface.co/datasets/Valen-Team/VisualDecisionBench"><img src="https://img.shields.io/badge/Dataset-VisualDecisionBench-3964FE?style=flat&amp;labelColor=1E232C" alt="VisualDecisionBench"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-555555?style=flat&amp;labelColor=1E232C" alt="Apache 2.0"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-555555?style=flat&amp;labelColor=1E232C" alt="Python 3.10+"></a>
@@ -24,14 +23,14 @@
 </p>
 
 <p align="center">
-  <a href="#简介">简介</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="#community-projects">社区项目</a> · <a href="https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/">Cookbook</a>
+  <a href="#简介">简介</a> · <a href="#version-selection">版本选择</a> · <a href="#模型下载">模型与数据集</a> · <a href="#api-usage">API 调用</a> · <a href="#快速开始">快速开始</a> · <a href="#onnx-sdk">ONNX 与 SDK</a> · <a href="#演示">演示</a> · <a href="#实验结果">评测结果</a> · <a href="#community-projects">社区项目</a> · <a href="https://valen-team.github.io/zh-Hans/cookbook/api-quickstart/">Cookbook</a>
 </p>
 
 <a id="简介"></a>
 
 ## 简介
 
-Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) 启发，它根据任务指令，对文本、图像和视频中的信息进行判断，直接输出给定候选的概率分布，为程序提供结构化的决策接口。仓库提供模型实现、数据处理、SFT 与实验性 RLCD 训练，以及推理和评估命令，支持使用自有数据训练。
+Valen-Decision（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) 启发，它根据任务指令，对文本、图像和视频中的信息进行判断，直接输出给定候选的概率分布，为程序提供结构化的决策接口。仓库提供模型实现、数据处理、SFT 与实验性 RLCD 训练，以及推理和评估命令，支持使用自有数据训练。
 
 <a id="version-selection"></a>
 
@@ -43,9 +42,10 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 最新动态
 
+- **2026-11-09**：发布 [Valen-Decision-1.5](https://huggingface.co/Valen-Team)，从 0.8B 到 27B 全尺寸覆盖。采用全新的分块双向注意力机制，在取得多模态 SOTA 处理能力的同时，保持强劲的文本处理能力。Valen-Decision-1.5 还采用双头机制，支持 bbox 输出，展现出极强的 Grounding 能力。
 - **2026-10-29**：[Python SDK](https://github.com/Valen-Team/valen-sdk-python/blob/main/README_zh.md#与大模型对比) 新增 `Valen.llm()`：把同一套问题交给 GPT、Claude 或 Gemini，返回同样的类型化答案，可在自己的代码里直接对比 Valen 与大模型的决策、token 和延迟。
 - **2026-10-29**：发布面向 Claude Code、Cursor、Codex 等编程 agent 的 [Valen agent skill](https://github.com/Valen-Team/skills)，官网同步提供 [`llms.txt`](https://valen-team.github.io/zh-Hans/llms.txt)、每个文档页的 Markdown 版本和 [OpenAPI 规格](https://valen-team.github.io/openapi.json)。[JevalKit](https://github.com/Valen-Team/JevalKit) 新增 OpenAI、Anthropic、Gemini 通用大模型基线，便于直接对比。
-- **2026-10-26**: 三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
+- **2026-10-26**：三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
 - **2026-10-25**：更新 [0.8B](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX)、[2B](https://huggingface.co/Valen-Team/Valen-2B-ONNX)、[4B](https://huggingface.co/Valen-Team/Valen-4B-ONNX) 模块化 ONNX 模型，发布 [Python](https://github.com/Valen-Team/valen-sdk-python)、[JavaScript / TypeScript](https://github.com/Valen-Team/valen-sdk-js) SDK 与 [C++ 文本集成](https://github.com/Valen-Team/valen-sdk-cpp)。见 [ONNX 与 SDK 指南](https://valen-team.github.io/zh-Hans/docs/valen/onnx/)。
 - **2026-10-21**：官网[聊天](https://valen-team.github.io/zh-Hans/)与[中英文文档](https://valen-team.github.io/zh-Hans/docs/)上线；提供无需 Key 的[免费决策 API](#api-usage)。
 
@@ -57,9 +57,14 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 | 模型 | 原生权重 / Transformers | ONNX Runtime | GGUF / 定制运行时 |
 | --- | --- | --- | --- |
-| Valen 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
-| Valen 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
-| Valen 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
+| Valen-Decision-1.5 0.8B | [🤗 Valen-Decision-1.5-0.8B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B) | [🤗 Valen-Decision-1.5-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-ONNX) | [🤗 Valen-Decision-1.5-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-GGUF) |
+| Valen-Decision-1.5 2B | [🤗 Valen-Decision-1.5-2B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B) | [🤗 Valen-Decision-1.5-2B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-ONNX) | [🤗 Valen-Decision-1.5-2B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-GGUF) |
+| Valen-Decision-1.5 4B | [🤗 Valen-Decision-1.5-4B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B) | [🤗 Valen-Decision-1.5-4B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-ONNX) | [🤗 Valen-Decision-1.5-4B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-GGUF) |
+| Valen-Decision-1.5 9B | [🤗 Valen-Decision-1.5-9B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B) | [🤗 Valen-Decision-1.5-9B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-ONNX) | [🤗 Valen-Decision-1.5-9B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-GGUF) |
+| Valen-Decision-1.5 27B | [🤗 Valen-Decision-1.5-27B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B) | [🤗 Valen-Decision-1.5-27B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-ONNX) | [🤗 Valen-Decision-1.5-27B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-GGUF) |
+| Valen-Decision-1.0 0.8B | [🤗 Valen-0.8B](https://huggingface.co/Valen-Team/Valen-0.8B) | [🤗 Valen-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-0.8B-ONNX) | [🤗 Valen-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-0.8B-GGUF) |
+| Valen-Decision-1.0 2B | [🤗 Valen-2B](https://huggingface.co/Valen-Team/Valen-2B) | [🤗 Valen-2B-ONNX](https://huggingface.co/Valen-Team/Valen-2B-ONNX) | [🤗 Valen-2B-GGUF](https://huggingface.co/Valen-Team/Valen-2B-GGUF) |
+| Valen-Decision-1.0 4B | [🤗 Valen-4B](https://huggingface.co/Valen-Team/Valen-4B) | [🤗 Valen-4B-ONNX](https://huggingface.co/Valen-Team/Valen-4B-ONNX) | [🤗 Valen-4B-GGUF](https://huggingface.co/Valen-Team/Valen-4B-GGUF) |
 | Valen-preview-0923（早期版本） | [🤗 Hugging Face](https://huggingface.co/Valen-Team/Valen-Preview-0923) | — | — |
 
 [VisualDecisionBench](https://huggingface.co/datasets/Valen-Team/VisualDecisionBench) 包含 Image 和 Video 两个子集，用于图像与视频决策评测。此前发布的 [General 100k](https://huggingface.co/datasets/Valen-Team/Valen-Training-General-100k) 用于训练，[General 5k](https://huggingface.co/datasets/Valen-Team/Valen-Eval-General-5k) 用于评测，[Sokoban](https://huggingface.co/datasets/Valen-Team/Valen-Eval-Game) 用于游戏训练与评测。
@@ -68,11 +73,36 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 
 ## 演示
 
-**Valen-Decision** 图像与视频决策演示，点击预览观看完整视频。
+**Valen-Decision-1.5** 图像与视频决策演示：一次前向同时输出框、概率、选择与评分。点击预览观看完整视频。
 
 <p align="center">
-  <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen 演示预览，点击观看完整视频。" width="1000"></a>
+  <a href="assets/demos/valen-decision-1.5-demo.mp4"><img src="assets/demos/valen-decision-1.5-demo.gif" alt="Valen-Decision-1.5 演示：一次前向同时输出框、概率、选择与评分。点击观看完整视频。" width="85%"></a>
 </p>
+
+<details>
+<summary><b>Valen-Decision-1.0 演示</b></summary>
+
+<br>
+
+<table width="100%">
+  <tr>
+    <td align="center" valign="middle">
+      <a href="assets/demos/Valen.mp4"><img src="assets/demos/valen-demo-preview.gif" alt="Valen-Decision-1.0 图像与视频决策演示，点击观看完整视频。" height="320"></a><br>
+      <b>图像与视频决策</b>
+    </td>
+    <td align="center" valign="middle">
+      <a href="assets/demos/valen-decision-1.0-games.mp4"><img src="assets/demos/valen-decision-1.0-games.gif" alt="Valen-Decision-1.0 游戏决策：Sokoban、Frozen Lake、Maze、Parkour Runner。点击观看完整视频。" height="320"></a><br>
+      <b>游戏决策</b>
+    </td>
+  </tr>
+</table>
+
+点击任一预览观看完整视频。
+
+</details>
+
+<!--
+Game decision-making demos are hidden for now; the files stay in assets/demos/games/.
 
 **游戏决策演示**——五条由 Valen-Decision 成功完成的游戏轨迹。点击任一预览可观看完整视频。
 
@@ -102,6 +132,7 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
     </td>
   </tr>
 </table>
+-->
 
 <a id="实验结果"></a>
 
@@ -110,6 +141,15 @@ Valen（万澜）将视觉感知引入 System One 决策。受 [Jev](https://typ
 [JevalKit](https://github.com/Valen-Team/JevalKit) 是我们的决策模型评测工具，提供统一的模型接口、Benchmark 接入和评分协议，可用于在支持的评测任务上评估与比较不同决策模型。
 
 Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index)，可前往查看该评测中的结果及与其他决策模型的对比。
+
+**Valen-Decision-1.5** 在取得 SOTA 多模态决策能力的同时，也保有强劲的文本决策水平。同时，Valen-Decision-1.5 系列模型在输出 bbox 的任务上也取得了优异的效果。下图为 Valen-Decision-1.5-27B 的评测结果。
+
+<p align="center">
+  <a href="assets/figures/evaluation-20261108/valen-decision-1.5-27b.png"><img src="assets/figures/evaluation-20261108/valen-decision-1.5-27b.png" alt="Valen-Decision-1.5-27B 与 WeMM-JEV-27B、Xing-VL2.0-Decision、Pplx-Decider、vLLM-SR d3-turbo、Amos 1 Large 对比：Decision Index Vision 82.8、Decision Index Text 74.6、TypedDecisions 79.4、VisualDecisionBench-Image 89.9、JevAltBench 95.2、DecisionBench 84.1、Procedural Typed Decisions 97.2、ZhDecisionBench 91.9。" width="1400"></a>
+</p>
+
+<details>
+<summary><b>Valen-Decision-1.0 评测结果（0.8B / 2B / 4B）</b></summary>
 
 **覆盖 0.8B、2B、4B 的视觉决策模型。** Valen-Decision 采用 Qwen3.5 + Mixer 和共享 state 推理，在百万级样本上进行 SFT。以下在 **VisualDecisionBench-Image、VisualDecisionBench-Video、公开 JevBench** 三组评测中，与已发布的决策模型进行对比。
 
@@ -124,6 +164,8 @@ Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodal
 <p align="center">
   <a href="assets/figures/evaluation-20261006/jevbench.png"><img src="assets/figures/evaluation-20261006/jevbench.png" alt="Valen 公开 JevBench 准确率：0.8B 77.92%、2B 83.55%、4B 83.12%；InternDecision 4B 为 86.58%。" width="1400"></a>
 </p>
+
+</details>
 
 ### 决定哪些工作交给 Valen-Decision
 
@@ -470,7 +512,7 @@ python -m evaluation.visualdecisionbench.evaluate \
 欢迎扫描下方二维码加入 Valen 微信群，一起讨论项目、交流使用体验和实验结果。
 
 <p align="center">
-  <img src="assets/figures/wechat_1021.png" alt="Valen 微信讨论群二维码" width="200">
+  <img src="assets/figures/wechat_1116.jpg" alt="Valen 微信讨论群二维码" width="240">
 </p>
 
 <a id="许可与致谢"></a>
