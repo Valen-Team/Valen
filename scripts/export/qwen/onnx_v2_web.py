@@ -12,6 +12,8 @@ import onnx
 from onnx import helper as h, numpy_helper as nh, TensorProto as T
 import argparse
 
+from onnx_v2_attention import use_block_mask
+
 p = argparse.ArgumentParser()
 p.add_argument("--source", required=True)
 p.add_argument("--output", required=True)
@@ -36,6 +38,9 @@ graphs = output / "onnx"
 graphs.mkdir(parents=True, exist_ok=True)
 reference = onnx.load(source / "onnx/decision.onnx", load_external_data=False)
 model = onnx.load(template, load_external_data=False)
+# Valen-Decision-1.5: the template's causal attention takes the caller's ``block_mask`` instead.
+if any(x.name == "block_mask" for x in reference.graph.input):
+    use_block_mask(model, config["head_dim"], T.FLOAT16)
 hidden = next(n.input[0] for n in model.graph.node if n.output == ["logits"])
 model.graph.node.remove(next(n for n in model.graph.node if n.output == ["logits"]))
 start = next(i for i, n in enumerate(reference.graph.node) if "valen/hidden" in n.output)
@@ -70,7 +75,7 @@ def dependencies(n):
     return result
 
 
-required = {"logits"}
+required = {x.name for x in model.graph.output}  # logits and, for 1.5, final_hidden
 kept = []
 for n in reversed(model.graph.node):
     if required.intersection(n.output):
@@ -181,7 +186,7 @@ for name in [
     "vision.onnx",
     "vision-weights-000.data",
     "head-weights-000.data",
-]:
+] + [path.name for path in sorted((source / "onnx").glob("grounding*"))]:
     target = graphs / name
     if target.exists() and target.stat().st_nlink > 1:
         target.unlink()
@@ -200,26 +205,25 @@ def digest(path):
 
 
 def schema(g):
-    return {
-        "inputs": [
-            {
-                "name": x.name,
-                "type": {T.FLOAT: "float32", T.FLOAT16: "float16", T.INT64: "int64"}[
-                    x.type.tensor_type.elem_type
-                ],
-                "shape": [d.dim_param or d.dim_value for d in x.type.tensor_type.shape.dim],
-            }
-            for x in g.graph.input
-        ]
-    }
+    def value(x):
+        tensor = x.type.tensor_type
+        return {
+            "name": x.name,
+            "dtype": T.DataType.Name(tensor.elem_type),
+            "shape": [d.dim_param or d.dim_value for d in tensor.shape.dim],
+        }
+
+    return {"inputs": [value(x) for x in g.graph.input], "outputs": [value(x) for x in g.graph.output]}
 
 
 manifest = json.loads((source / "valen_onnx.json").read_text())
+grounding = (graphs / "grounding.onnx").exists()  # Valen-Decision-1.5 bbox head
 variant = {
     "graphs": {
         "embedding": "onnx/embedding.onnx",
         "vision": "onnx/vision.onnx",
         "decision": "onnx/decision.onnx",
+        **({"grounding": "onnx/grounding.onnx"} if grounding else {}),
     },
     "io_dtype": "float32",
     "minimum_onnxruntime": "1.30.0",
@@ -231,12 +235,20 @@ variant = {
     },
     "files": files,
     "sha256": {name: digest(output / name) for name in files},
+    "opset": 22,
+    "contrib_operators": sorted({n.op_type for n in model.graph.node if n.domain == "com.microsoft"}),
     "components": {
-        "embedding": ["onnx/embedding.data"],
-        "vision": ["onnx/vision-weights-000.data"],
-        "decision": ["onnx/backbone.onnx.data", "onnx/head-weights-000.data"],
+        "embedding": ["onnx/embedding.onnx", "onnx/embedding.data"],
+        "vision": ["onnx/vision.onnx", "onnx/vision-weights-000.data"],
+        "decision": ["onnx/decision.onnx", "onnx/backbone.onnx.data", "onnx/head-weights-000.data"],
+        **({"grounding": ["onnx/grounding.onnx", "onnx/grounding-weights-000.data"]} if grounding else {}),
     },
-    "io_schema": {"decision": schema(model)},
+    "io_schema": {
+        name: schema(model if name == "decision" else onnx.load(str(output / path), load_external_data=False))
+        for name, path in [("decision", ""), ("embedding", "onnx/embedding.onnx"), ("vision", "onnx/vision.onnx")]
+        + ([("grounding", "onnx/grounding.onnx")] if grounding else [])
+    },
+    "quality_status": "candidate_requires_target_validation",
 }
 manifest["variants"] = {"web-portable": variant}
 manifest["exporter"] = {

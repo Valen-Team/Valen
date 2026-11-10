@@ -6,12 +6,16 @@ import io
 import time
 import uuid
 
+import torch
 from fastapi import HTTPException, Request
 from PIL import Image
 
 from valen_vllm.answers import answers
+from valen_vllm.blocks import GLUE, token_segments
 from valen_vllm.compiler import encode_valen, valen_messages
 from valen_vllm.decisions import to_internal, to_public
+from valen_vllm.grounding import image_grids
+from valen_vllm.head import valen_segments
 from valen_vllm.protocol import SystemOneRequest
 
 
@@ -63,7 +67,7 @@ class ValenEndpointPlugin:
             return to_public(body, response)
 
     async def init_state(self, engine_client, state, args):
-        from transformers import AutoTokenizer
+        from transformers import AutoImageProcessor, AutoTokenizer
         from vllm.exceptions import VLLMClientError
         from vllm.pooling_params import PoolingParams
 
@@ -76,8 +80,19 @@ class ValenEndpointPlugin:
         names = args.served_model_name or [config.model]
         if isinstance(names, str):
             names = [names]
-        limit = min(config.max_model_len, config.hf_config.valen_max_length)
-        fold = config.hf_config.valen_decision_version == "1.5"
+        hf_config = config.hf_config
+        limit = min(config.max_model_len, hf_config.valen_max_length)
+        fold = hf_config.valen_decision_version == "1.5"
+        mask = hf_config.valen_full_attention_mask
+        encode = lambda text: tokenizer.encode(text, add_special_tokens=False)
+        glue = [encode(text) for text in GLUE]
+        # The engine resizes images with this processor; bbox grids follow it.
+        image_processor = AutoImageProcessor.from_pretrained(
+            config.model, revision=config.revision, trust_remote_code=False
+        )
+        size = hf_config.valen_media_kwargs.get("images_kwargs", {}).get("size")
+        if size:
+            image_processor.size = dict(size)
 
         async def handle(body, raw_request):
             if body.model not in names:
@@ -89,14 +104,34 @@ class ValenEndpointPlugin:
                 images = await asyncio.to_thread(
                     lambda: [read_image(s) for s in sources]
                 )
+                grids = []
+                if any(q.type == "bbox" for q in body.questions.values()):
+                    if not hf_config.valen_grounding:
+                        raise ValueError("bbox questions require a grounding head")
+                    grids = image_grids(
+                        image_processor, [(i.height, i.width) for i in images]
+                    )
+                counts = [rows * cols for rows, cols in grids]
                 ids, layout = encode_valen(
                     tokenizer,
                     body,
                     messages,
                     max_length=limit,
-                    image_token_counts=[],
+                    image_token_counts=counts,
                     fold=fold,
+                    mask=mask,
+                    image_grids=grids,
                 )
+                # The engine reads the blocks back from the prompt's tokens.
+                shift = sum(count - 1 for count in counts)
+                blocks = valen_segments(layout, len(ids) + shift)
+                if blocks is not None and not torch.equal(
+                    blocks[shift:],
+                    token_segments(
+                        torch.tensor(ids), glue, mask == "block_bidirectional", encode
+                    ),
+                ):
+                    raise ValueError("Question text repeats a Valen question header")
             except (ValueError, TypeError, OSError) as exc:
                 raise HTTPException(400, str(exc)) from exc
             prompt = {"prompt_token_ids": ids}

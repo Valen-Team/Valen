@@ -6,6 +6,13 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+### Models
+- Valen-Decision-1.5 GGUFs for the Valen custom llama.cpp runtime, replacing the BF16 container files: F32 and Q8_0 text files plus the vision file for [0.8B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-GGUF), [2B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-GGUF), [4B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-GGUF) and [9B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-GGUF), and the Q8_0 text file plus the vision file for [27B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-GGUF). Each repository carries `MANIFEST.json` with hashes and the measured differences against the native model.
+
+### Code
+- GGUF runtime 0.2.0 ([`gguf-runtime-v0.2.0`](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0)): the Valen-patched llama.cpp server now serves Valen-Decision-1.5 with block attention and noul-rubric folding, takes text and image input, and answers `bbox` questions through `/v1/systemone` and `/v1/decisions`. Valen-Decision-1.0 GGUFs load with it as well.
+- Add `serving/gguf/` with `valen-decision-1.5-runtime.patch`, the source change from runtime 0.1.0 to 0.2.0, and its apply, build and convert instructions; `docs/gguf-runtime-manifest.json` records the 0.2.0 artifact.
+
 ### Docs
 - Point the README Transformers and VisualDecisionBench evaluation examples to Valen-Decision-1.5-2B, and the fine-tuning guidance to Valen-Decision-1.5-0.8B.
 

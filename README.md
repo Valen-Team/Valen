@@ -42,6 +42,7 @@ For a first try, use the [web experience or free API](https://valen-team.github.
 
 ## News
 
+- **2026-11-10**: Valen-Decision-1.5 GGUFs for every size from 0.8B to 27B are available with [GGUF runtime 0.2.0](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0), a Valen-patched llama.cpp server that takes text and image input and answers bbox questions. See the [GGUF guide](https://valen-team.github.io/docs/valen/gguf/).
 - **2026-11-09**: Released [Valen-Decision-1.5](https://huggingface.co/Valen-Team), covering every size from 0.8B to 27B. It adopts a new block-bidirectional attention mechanism, delivering state-of-the-art multimodal capability while keeping strong text capability. Valen-Decision-1.5 also uses a dual-head design that supports bbox output, showing strong grounding ability.
 - **2026-10-29**: The [Python SDK](https://github.com/Valen-Team/valen-sdk-python#compare-with-an-llm) adds `Valen.llm()`: send the same questions to GPT, Claude or Gemini and get the same typed answers back, to compare decisions, tokens and latency with Valen in your own code.
 - **2026-10-29**: Released the [Valen agent skill](https://github.com/Valen-Team/skills) for Claude Code, Cursor, Codex and other coding agents, with [`llms.txt`](https://valen-team.github.io/llms.txt), Markdown versions of every docs page and an [OpenAPI spec](https://valen-team.github.io/openapi.json). [JevalKit](https://github.com/Valen-Team/JevalKit) adds OpenAI, Anthropic and Gemini LLM baselines for side-by-side comparison.

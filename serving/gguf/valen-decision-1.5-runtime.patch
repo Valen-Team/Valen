@@ -1,0 +1,927 @@
+--- a/common/common.cpp
++++ b/common/common.cpp
+@@ -2285,6 +2285,9 @@
+         if (t.decision_order != 0) {
+             llama_batch_ext_set_decision_order(res, idx, (llama_decision_order) t.decision_order);
+         }
++        if (t.decision_block != 0) {
++            llama_batch_ext_set_decision_block(res, idx, t.decision_block);
++        }
+     }
+ 
+     return res;
+--- a/common/common.h
++++ b/common/common.h
+@@ -1090,6 +1090,7 @@
+         llama_embd   state; // non-owning view of the data passed to set_embd_state(), data == NULL if none
+         std::vector<llama_seq_id> seq_ids_extra; // see add_seq()
+         int32_t      decision_order = 0; // see llama_batch_ext_set_decision_order()
++        int32_t      decision_block = 0; // see llama_batch_ext_set_decision_block()
+     };
+ 
+     std::vector<token> tokens; // mirror of the entries, tokens[i] describes batch index i
+--- a/conversion/valen.py
++++ b/conversion/valen.py
+@@ -14,11 +14,15 @@
+ def _unwrap(name: str) -> str:
+     if name.startswith("backbone."):
+         return "model." + name[len("backbone."):]
+-    if name.startswith("head."):
++    if name.startswith(("head.", "grounding.")):
+         return name
+     raise ValueError(f"Unexpected Valen checkpoint tensor: {name}")
+ 
+ 
++# Attention of the full-attention layers; the linear attention layers are always causal.
++ATTENTION_MASKS = ("causal", "prefix_lm", "block_bidirectional", "bbox_blocks")
++
++
+ @ModelBase.register("ValenQwenForDecisionMaking")
+ class ValenTextModel(Qwen3_5TextModel):
+     model_arch = gguf.MODEL_ARCH.VALEN
+@@ -31,6 +35,11 @@
+ 
+     def set_gguf_parameters(self):
+         super().set_gguf_parameters()
++        mask = self.hparams.get("valen_full_attention_mask", "causal")
++        if mask not in ATTENTION_MASKS:
++            raise ValueError(f"Unsupported Valen attention mask: {mask}")
++        self.gguf_writer.add_string("valen.attention.mask", mask)
++        self.gguf_writer.add_string("valen.decision.version", self.hparams.get("valen_decision_version", "1.0"))
+         config = self.hparams["valen_head"]
+         if config.get("head_type") != "mixer":
+             raise ValueError("Only the trained Valen Mixer head is implemented")
+@@ -41,6 +50,9 @@
+             if type(value) is not int or value < 1:
+                 raise ValueError(f"Invalid Valen Mixer setting: {source}")
+             self.gguf_writer.add_uint32("valen.mixer." + target, value)
++        # the grounding head answers the bbox questions
++        for key, value in (self.hparams.get("valen_grounding") or {}).items():
++            self.gguf_writer.add_uint32("valen.grounding." + key, value)
+         if self.hparams.get("qwen_execution") != "shared_state":
+             raise ValueError("This adapter requires native shared_state execution")
+         self.gguf_writer.add_string("valen.execution", "shared_state")
+@@ -65,10 +77,13 @@
+         if name.startswith("head."):
+             yield self.map_tensor_name(name), data_torch.float()
+             return
++        if name.startswith("grounding."):
++            yield name, data_torch.float()
++            return
+         yield from super().modify_tensors(data_torch, name, bid)
+ 
+     def tensor_force_quant(self, name, new_name, bid, n_dims):
+-        if name.startswith("head."):
++        if name.startswith(("head.", "grounding.")):
+             return gguf.GGMLQuantizationType.F32
+         return super().tensor_force_quant(name, new_name, bid, n_dims)
+ 
+@@ -86,4 +101,6 @@
+     @classmethod
+     def filter_tensors(cls, item):
+         name, gen = item
++        if name.startswith("grounding."):
++            return None
+         return super().filter_tensors((_unwrap(name), gen))
+--- a/src/llama-arch.cpp
++++ b/src/llama-arch.cpp
+@@ -565,6 +565,7 @@
+     { LLM_TENSOR_VALEN_CHANNEL_DOWN, "head.blocks.%d.channel_mlp.2" },
+     { LLM_TENSOR_VALEN_OUTPUT_NORM, "head.output.0" },
+     { LLM_TENSOR_VALEN_OUTPUT, "head.output.1" },
++    { LLM_TENSOR_VALEN_GROUNDING, "grounding" },
+     { LLM_TENSOR_DECISION_HIDDEN_NORM,                   "decision.hidden_norm" },
+     { LLM_TENSOR_DECISION_PROJ_MEMORY,                   "decision.proj_memory" },
+     { LLM_TENSOR_DECISION_PROJ_QUESTION,                 "decision.proj_question" },
+@@ -861,6 +862,7 @@
+     {LLM_TENSOR_VALEN_CHANNEL_DOWN, {LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT}},
+     {LLM_TENSOR_VALEN_OUTPUT_NORM, {LLM_TENSOR_LAYER_OUTPUT, GGML_OP_MUL}},
+     {LLM_TENSOR_VALEN_OUTPUT, {LLM_TENSOR_LAYER_OUTPUT, GGML_OP_MUL_MAT}},
++    {LLM_TENSOR_VALEN_GROUNDING, {LLM_TENSOR_LAYER_OUTPUT, GGML_OP_MUL_MAT}},
+     {LLM_TENSOR_DECISION_HIDDEN_NORM,       {LLM_TENSOR_LAYER_OUTPUT,    GGML_OP_MUL}},
+     {LLM_TENSOR_DECISION_PROJ_MEMORY,       {LLM_TENSOR_LAYER_OUTPUT,    GGML_OP_MUL_MAT}},
+     {LLM_TENSOR_DECISION_PROJ_QUESTION,     {LLM_TENSOR_LAYER_OUTPUT,    GGML_OP_MUL_MAT}},
+--- a/src/llama-arch.h
++++ b/src/llama-arch.h
+@@ -735,6 +735,7 @@
+     LLM_TENSOR_VALEN_CHANNEL_DOWN,
+     LLM_TENSOR_VALEN_OUTPUT_NORM,
+     LLM_TENSOR_VALEN_OUTPUT,
++    LLM_TENSOR_VALEN_GROUNDING,
+     LLM_TENSOR_DECISION_HIDDEN_NORM,
+     LLM_TENSOR_DECISION_PROJ_MEMORY,
+     LLM_TENSOR_DECISION_PROJ_QUESTION,
+--- a/src/llama-batch.cpp
++++ b/src/llama-batch.cpp
+@@ -221,6 +221,10 @@
+             decision_order.resize(n_tok, 0);
+             decision_order[i] = batch_inp.tokens[i].decision_order;
+         }
++        if (batch_inp.tokens[i].decision_block != 0) {
++            decision_block.resize(n_tok, 0);
++            decision_block[i] = batch_inp.tokens[i].decision_block;
++        }
+     }
+ 
+     //
+@@ -314,6 +318,7 @@
+             /*.output       =*/ batch.logits,
+             /*.type         =*/ is_embd_vec.empty() ? nullptr : is_embd_vec.data(),
+             /*.decision_order =*/ decision_order.empty() ? nullptr : decision_order.data(),
++            /*.decision_block =*/ decision_block.empty() ? nullptr : decision_block.data(),
+             /*.data         =*/ {},
+         };
+ 
+@@ -539,6 +544,7 @@
+         /*.output       =*/ udata->output.data(),
+         /*.type         =*/ nullptr,
+         /*.decision_order =*/ nullptr,
++        /*.decision_block =*/ nullptr,
+         /*.data         =*/ std::move(udata),
+     };
+ 
+@@ -845,6 +851,7 @@
+     seq_id_unq  .clear();
+     output      .clear();
+     decision_order.clear();
++    decision_block.clear();
+ 
+     for (auto & cur : seq_pos) {
+         cur.clear();
+@@ -897,6 +904,7 @@
+     udata->output    .resize(n_tokens);
+     udata->type      .resize(mixed ? n_tokens : 0);
+     udata->decision_order.resize(decision_order.empty() ? 0 : n_tokens);
++    udata->decision_block.resize(decision_block.empty() ? 0 : n_tokens);
+ 
+     udata->batch_idxs = idxs;
+     udata->seq_id_data.reserve(n_tokens);
+@@ -930,6 +938,9 @@
+         if (!decision_order.empty()) {
+             udata->decision_order[i] = decision_order[idxs[i]];
+         }
++        if (!decision_block.empty()) {
++            udata->decision_block[i] = decision_block[idxs[i]];
++        }
+ 
+         for (int s = 0; s < udata->n_seq_id[i]; ++s) {
+             const llama_seq_id seq_id = batch.seq_id[idxs[i]][s];
+@@ -975,6 +986,7 @@
+         /*.output       =*/ udata->output.data(),
+         /*.type         =*/ mixed ? udata->type.data() : nullptr,
+         /*.decision_order =*/ udata->decision_order.empty() ? nullptr : udata->decision_order.data(),
++        /*.decision_block =*/ udata->decision_block.empty() ? nullptr : udata->decision_block.data(),
+         /*.data         =*/ std::move(udata),
+     };
+ 
+@@ -1337,6 +1349,14 @@
+     return true;
+ }
+ 
++bool llama_batch_ext::set_decision_block(int32_t idx, int32_t block) {
++    if (idx < 0 || idx >= (int32_t) tokens.size()) {
++        return false;
++    }
++    tokens[idx].decision_block = block;
++    return true;
++}
++
+ // llama_batch_ext C API
+ 
+ llama_batch_ext * llama_batch_ext_init(llama_context * ctx) {
+@@ -1405,6 +1425,10 @@
+     return batch->set_decision_order(idx, order);
+ }
+ 
++bool llama_batch_ext_set_decision_block(llama_batch_ext * batch, int32_t idx, int32_t block) {
++    return batch->set_decision_block(idx, block);
++}
++
+ // llama_batch_compat
+ 
+ void llama_batch_compat::init(llama_batch_ext & dst, const llama_batch & batch_inp, size_t n_embd_row) {
+--- a/src/llama-batch.h
++++ b/src/llama-batch.h
+@@ -60,6 +60,7 @@
+     int8_t       *  output;     // [n_tokens]         | i   | -
+     int8_t       *  type;       // [n_tokens]         | i   | -     (mixed ubatch only, 0 - token, 1 - embd)
+     int32_t      *  decision_order; // [n_tokens], NULL if no entry has one, see llama_batch_ext_set_decision_order()
++    int32_t      *  decision_block; // [n_tokens], NULL if no entry has one, see llama_batch_ext_set_decision_block()
+ 
+     struct data_t {
+         std::vector<llama_token>    token;
+@@ -74,6 +75,7 @@
+         std::vector<int8_t>         type;
+         std::vector<int32_t>        batch_idxs;  // original batch index for each token
+         std::vector<int32_t>        decision_order;
++        std::vector<int32_t>        decision_block;
+ 
+         std::vector<llama_seq_id> seq_id_data;
+     };
+@@ -116,6 +118,7 @@
+         size_t       state_off = 0; // index offset in the state array
+         bool         output = false; // TODO: have dedicated output flags
+         int32_t      decision_order = 0; // see llama_batch_ext_set_decision_order()
++        int32_t      decision_block = 0; // see llama_batch_ext_set_decision_block()
+         std::unordered_set<llama_seq_id> seq_ids;
+         std::array<llama_pos, GGML_MROPE_SECTIONS> pos = {0, 0, 0, 0};
+     };
+@@ -148,6 +151,7 @@
+     bool set_token_pos(int32_t idx, const llama_pos * pos_in);
+     bool set_output(int32_t idx, bool output_last);
+     bool set_decision_order(int32_t idx, int32_t order);
++    bool set_decision_block(int32_t idx, int32_t block);
+ };
+ 
+ // a helper for sanitizing, fulfilling and splitting a batch
+@@ -232,6 +236,7 @@
+     std::vector<int32_t>        seq_idx;
+     std::vector<int8_t>         output;
+     std::vector<int32_t>        decision_order; // empty if no entry has one
++    std::vector<int32_t>        decision_block; // empty if no entry has one
+ 
+     using pos_set_t = std::set<llama_pos>;
+     using seq_cpl_t = std::vector<bool>;
+--- a/src/llama-ext.h
++++ b/src/llama-ext.h
+@@ -120,10 +120,17 @@
+     LLAMA_DECISION_ORDER_OPTION          = 4, // text of an option
+     LLAMA_DECISION_ORDER_VALEN_CONTEXT   = 5, // full compiled state prefix
+     LLAMA_DECISION_ORDER_VALEN_READOUT   = 6, // one token per question, in question order
++    LLAMA_DECISION_ORDER_QUESTION_BBOX   = 7, // Valen: text of a bbox question about image i is 7 + i
+ };
+ // The embeddings output has one value per entry: row i is the score of option i
++// A Valen bbox question has 5 values in place of its options: x1, y1, x2, y2 and the confidence
+ LLAMA_API bool llama_batch_ext_set_decision_order(struct llama_batch_ext * batch, int32_t idx, enum llama_decision_order order);
+ 
++// Valen attention block of an entry, the default is 0
++// After the state prefix, an entry sees the prefix, the entries of block 0 and the entries of its own block
++// In the state prefix, the entries of image i have block i + 1
++LLAMA_API bool llama_batch_ext_set_decision_block(struct llama_batch_ext * batch, int32_t idx, int32_t block);
++
+ // Label of option i of a decision model ("<arch>.decision.labels"), nullptr past the last one
+ LLAMA_API const char * llama_model_decision_label(const struct llama_model * model, uint32_t i);
+ 
+--- a/src/llama-kv-cache-dsv4.cpp
++++ b/src/llama-kv-cache-dsv4.cpp
+@@ -168,6 +168,7 @@
+         /*.output       =*/ data->output.data(),
+         /*.type         =*/ nullptr,
+         /*.decision_order =*/ nullptr,
++        /*.decision_block =*/ nullptr,
+         /*.data         =*/ data,
+     };
+ 
+--- a/src/llama-quant.cpp
++++ b/src/llama-quant.cpp
+@@ -306,7 +306,7 @@
+     if (ggml_n_dims(tensor) < 2) return false;
+ 
+     const std::string name = ggml_get_name(tensor);
+-    if (arch == LLM_ARCH_VALEN && name.rfind("head.", 0) == 0) {
++    if (arch == LLM_ARCH_VALEN && (name.rfind("head.", 0) == 0 || name.rfind("grounding.", 0) == 0)) {
+         return false;
+     }
+ 
+--- a/src/models/models.h
++++ b/src/models/models.h
+@@ -2625,7 +2625,9 @@
+ };
+ 
+ 
+-// Trained four-role Mixer over a causal Qwen3.5 backbone, without cache.
++// Trained four-role Mixer over a Qwen3.5 backbone, without cache.
++// Valen-Decision-1.5 attends in blocks in the full-attention layers: the state prefix sees itself,
++// the questions and readouts see the whole sequence (causally with "prefix_lm", their own block with "bbox_blocks").
+ struct llama_model_valen : public llama_model_qwen35 {
+     llama_model_valen(const llama_model_params & params) : llama_model_qwen35(params) {}
+     void load_arch_hparams(llama_model_loader & ml) override;
+@@ -2634,7 +2636,10 @@
+     uint32_t mixer_width = 0;
+     uint32_t mixer_token_hidden = 0;
+     uint32_t mixer_channel_hidden = 0;
+-    std::map<std::string, ggml_tensor *> mixer_weights;
++    std::string attention_mask = "causal";
++    uint32_t grounding_width = 0; // 0 if the model has no grounding head, it answers the bbox questions
++    uint32_t grounding_hidden = 0;
++    std::map<std::string, ggml_tensor *> mixer_weights; // also the weights of the grounding head
+     class input_decision;
+     struct graph : public llm_build_delta_net_base {
+         graph(const llama_model & model, const llm_graph_params & params);
+--- a/src/models/valen-mixer.h
++++ b/src/models/valen-mixer.h
+@@ -1,9 +1,29 @@
+ #pragma once
+ #include "ggml.h"
++#include <cmath>
+ #include <functional>
+ #include <stdexcept>
+ #include <string>
+ 
++// LayerNorm, Linear and Linear-GELU-Linear of the heads, with the weights of the checkpoint
++struct valen_layers {
++    ggml_context * ctx;
++    const std::function<ggml_tensor *(const std::string &)> & weight;
++
++    ggml_tensor * norm(ggml_tensor * x, const std::string & name) const {
++        return ggml_add(ctx, ggml_mul(ctx, ggml_norm(ctx, x, 1e-5f), weight(name + ".weight")), weight(name + ".bias"));
++    }
++    ggml_tensor * linear(ggml_tensor * x, const std::string & name) const {
++        auto * w = weight(name + ".weight");
++        auto * product = ggml_mul_mat(ctx, w, x);
++        ggml_prec_set_acc(product, GGML_PREC_F32);
++        return ggml_add(ctx, product, weight(name + ".bias"));
++    }
++    ggml_tensor * mlp(ggml_tensor * x, const std::string & name) const {
++        return linear(ggml_gelu_erf(ctx, linear(x, name + ".0")), name + ".2");
++    }
++};
++
+ // GGML axes are [hidden, role, candidate]; PyTorch axes are reversed.
+ inline ggml_tensor * valen_mixer_graph(
+         ggml_context * ctx, ggml_tensor * features, int layers,
+@@ -11,18 +31,10 @@
+     if (layers < 1 || layers > 64 || features->ne[1] != 4 || features->ne[3] != 1) {
+         throw std::runtime_error("invalid Valen Mixer dimensions");
+     }
+-    auto norm = [&](ggml_tensor * x, const std::string & name) {
+-        return ggml_add(ctx, ggml_mul(ctx, ggml_norm(ctx, x, 1e-5f), weight(name + ".weight")), weight(name + ".bias"));
+-    };
+-    auto linear = [&](ggml_tensor * x, const std::string & name) {
+-        auto * w = weight(name + ".weight");
+-        auto * product = ggml_mul_mat(ctx, w, x);
+-        ggml_prec_set_acc(product, GGML_PREC_F32);
+-        return ggml_add(ctx, product, weight(name + ".bias"));
+-    };
+-    auto mlp = [&](ggml_tensor * x, const std::string & name) {
+-        return linear(ggml_gelu_erf(ctx, linear(x, name + ".0")), name + ".2");
+-    };
++    const valen_layers l{ctx, weight};
++    auto norm   = [&](ggml_tensor * x, const std::string & name) { return l.norm(x, name); };
++    auto linear = [&](ggml_tensor * x, const std::string & name) { return l.linear(x, name); };
++    auto mlp    = [&](ggml_tensor * x, const std::string & name) { return l.mlp(x, name); };
+     auto * x = ggml_add(ctx, linear(norm(features, "head.input_norm"), "head.projection"), weight("head.roles"));
+     for (int i = 0; i < layers; ++i) {
+         const std::string prefix = "head.blocks." + std::to_string(i);
+@@ -47,3 +59,30 @@
+     ggml_prec_set_acc(roles, GGML_PREC_F32);
+     return ggml_reshape_3d(ctx, roles, hidden->ne[0], 4, pool->ne[1] / 4);
+ }
++
++// Grounding head of a bbox question: the readout scores the tokens of the image (softmax over the tokens),
++// and each token regresses the distances from its cell centre to the four edges of the box.
++// hidden is [hidden, 1 + token], the readout then the tokens of the image; centres is [4, token] with
++// x, y, x, y of the cell centres; cell is -1/cols, -1/rows, 1/cols, 1/rows.
++// Returns [1, 5]: the box x1, y1, x2, y2 of the most probable token, and the probability of the tokens
++// whose centre is in this box (its own token always is).
++inline ggml_tensor * valen_grounding_graph(
++        ggml_context * ctx, ggml_tensor * hidden, ggml_tensor * centres, ggml_tensor * cell,
++        const std::function<ggml_tensor *(const std::string &)> & weight) {
++    const valen_layers l{ctx, weight};
++    const int64_t n = centres->ne[1];
++    auto * d = l.norm(ggml_view_1d(ctx, hidden, hidden->ne[0], 0), "grounding.decision_norm");
++    auto * t = l.norm(ggml_view_2d(ctx, hidden, hidden->ne[0], n, hidden->nb[1], hidden->nb[1]), "grounding.token_norm");
++    auto * k = l.linear(t, "grounding.key");
++    auto * logits = ggml_mul_mat(ctx, k, l.mlp(d, "grounding.query"));
++    auto * probs = ggml_soft_max(ctx, ggml_scale(ctx, logits, 1.0f / sqrtf(float(k->ne[0]))));
++    auto * distances = ggml_mul(ctx, k, ggml_sigmoid(ctx, l.linear(d, "grounding.gate")));
++    distances = l.linear(ggml_gelu_erf(ctx, l.linear(l.norm(distances, "grounding.regress.0"), "grounding.regress.1")), "grounding.regress.3");
++    distances = ggml_scale_bias(ctx, ggml_softplus(ctx, distances), 1.0f, 0.5f);
++    auto * boxes = ggml_clamp(ctx, ggml_add(ctx, centres, ggml_mul(ctx, distances, cell)), 0.0f, 1.0f);
++    auto * box = ggml_get_rows(ctx, boxes, ggml_argmax(ctx, probs));
++    // a token is outside if its centre is past an edge of the box
++    auto * outside = ggml_step(ctx, ggml_sum_rows(ctx, ggml_step(ctx, ggml_mul(ctx, ggml_sub(ctx, centres, box), cell))));
++    auto * inside = ggml_reshape_2d(ctx, ggml_scale_bias(ctx, outside, -1.0f, 1.0f), n, 1);
++    return ggml_concat(ctx, ggml_reshape_2d(ctx, box, 1, 4), ggml_mul_mat(ctx, inside, probs), 1);
++}
+--- a/src/models/valen.cpp
++++ b/src/models/valen.cpp
+@@ -9,11 +9,18 @@
+     ml.get_key("valen.mixer.width", mixer_width);
+     ml.get_key("valen.mixer.token_hidden", mixer_token_hidden);
+     ml.get_key("valen.mixer.channel_hidden", mixer_channel_hidden);
++    ml.get_key("valen.attention.mask", attention_mask, false);
++    if (attention_mask != "causal" && attention_mask != "prefix_lm" &&
++        attention_mask != "block_bidirectional" && attention_mask != "bbox_blocks") {
++        throw std::runtime_error("unsupported Valen attention mask: " + attention_mask);
++    }
+     if (mixer_layers < 1 || mixer_layers > std::min<uint32_t>(64, hparams.n_layer()) ||
+         mixer_width < 1 || mixer_width > 8192 || mixer_token_hidden < 1 || mixer_token_hidden > 8192 ||
+         mixer_channel_hidden < 1 || mixer_channel_hidden > 65536) {
+         throw std::runtime_error("invalid Valen Mixer configuration");
+     }
++    ml.get_key("valen.grounding.width", grounding_width, false);
++    ml.get_key("valen.grounding.hidden", grounding_hidden, false);
+     hparams.n_embd_out_impl = 1;
+ }
+ 
+@@ -50,6 +57,23 @@
+     }
+     norm(LLM_TENSOR_VALEN_OUTPUT_NORM, w);
+     linear(LLM_TENSOR_VALEN_OUTPUT, w, 1);
++    if (grounding_width > 0) {
++        const int64_t gw = grounding_width;
++        const int64_t gh = grounding_hidden;
++        auto grounding = [&](const std::string & name, std::initializer_list<int64_t> shape, int64_t out) {
++            load(LLM_TENSOR_VALEN_GROUNDING, (name + ".weight").c_str(), shape);
++            load(LLM_TENSOR_VALEN_GROUNDING, (name + ".bias").c_str(), {out});
++        };
++        grounding("decision_norm", {n_embd}, n_embd);
++        grounding("token_norm", {n_embd}, n_embd);
++        grounding("query.0", {n_embd, gh}, gh);
++        grounding("query.2", {gh, gw}, gw);
++        grounding("key", {n_embd, gw}, gw);
++        grounding("gate", {n_embd, gw}, gw);
++        grounding("regress.0", {gw}, gw);
++        grounding("regress.1", {gw, gh}, gh);
++        grounding("regress.3", {gh, 4}, 4);
++    }
+ }
+ 
+ std::unique_ptr<llm_graph_context> llama_model_valen::build_arch_graph(const llm_graph_params & params) const {
+@@ -58,10 +82,12 @@
+ 
+ struct valen_spans {
+     struct span { int32_t start = 0; int32_t end = 0; };
+-    struct question { span instruction; std::vector<span> candidates; int32_t readout = 0; };
++    // a bbox question has no candidates, tokens are the entries of its image
++    struct question { span instruction; std::vector<span> candidates; int32_t readout = 0; int32_t image = -1; std::vector<int32_t> tokens = {}; };
+     span context;
+     std::vector<question> questions;
+     size_t n_options = 0;
++    std::vector<int32_t> layout; // per question: its number of candidates, or minus its number of image tokens
+     bool valid = false;
+ };
+ 
+@@ -96,31 +122,62 @@
+                 ok = end == i + 1 && n_readout < spans.questions.size();
+                 if (ok) spans.questions[n_readout++].readout = i;
+                 break;
+-            default: ok = false;
++            default:
++                ok = order >= LLAMA_DECISION_ORDER_QUESTION_BBOX && n_context == 1 && n_readout == 0;
++                spans.questions.push_back({{i, end}, {}, 0, order - LLAMA_DECISION_ORDER_QUESTION_BBOX});
+         }
+         i = end;
+     }
+     spans.valid = ok && !spans.questions.empty() && n_readout == spans.questions.size();
+-    for (const auto & q : spans.questions) spans.valid &= !q.candidates.empty();
++    for (auto & q : spans.questions) {
++        for (int32_t i = 0; q.image >= 0 && batch.decision_block && i < spans.context.end; ++i) {
++            if (batch.decision_block[i] == q.image + 1) q.tokens.push_back(i);
++        }
++        spans.valid &= q.image >= 0 ? !q.tokens.empty() : !q.candidates.empty();
++        spans.layout.push_back(q.image >= 0 ? -(int32_t) q.tokens.size() : (int32_t) q.candidates.size());
++    }
+     if (!spans.valid) {
+         spans.context = {};
+         spans.questions = {{{}, {{0, 0}}, 0}};
+         spans.n_options = 1;
++        spans.layout = {1};
+     }
+     return spans;
+ }
+ 
+ class llama_model_valen::input_decision : public llm_graph_input_i {
+ public:
+-    input_decision(const llama_ubatch & batch) : n_tokens(batch.n_tokens), n_options(valen_get_spans(batch).n_options) {}
++    input_decision(const llama_ubatch & batch) : n_tokens(batch.n_tokens), n_options(valen_get_spans(batch).n_options), layout(valen_get_spans(batch).layout) {}
+     void set_input(const llama_ubatch * batch) override {
+         const auto spans = valen_get_spans(*batch);
+-        GGML_ASSERT(spans.n_options == n_options);
++        GGML_ASSERT(spans.layout == layout);
+         const float state = spans.valid || !batch->decision_order ? 0.0f : NAN;
+         ggml_backend_tensor_set(status, &state, 0, sizeof(state));
+         std::vector<float> data(n_tokens * 4 * n_options, 0.0f);
+-        size_t col = 0;
++        size_t col = 0, i_box = 0;
+         for (const auto & q : spans.questions) {
++            if (q.image >= 0) {
++                // the grid of the image is in the positions of its entries: t, t + row, t + col
++                const auto & box = boxes[i_box++];
++                const llama_pos * pos_y = batch->pos + batch->n_tokens, * pos_x = pos_y + batch->n_tokens;
++                const llama_pos t = batch->pos[q.tokens[0]];
++                llama_pos rows = 0, cols = 0;
++                for (const int32_t i : q.tokens) {
++                    rows = std::max(rows, pos_y[i] - t + 1);
++                    cols = std::max(cols, pos_x[i] - t + 1);
++                }
++                std::vector<int32_t> index = {q.readout};
++                std::vector<float> centres;
++                for (const int32_t i : q.tokens) {
++                    const float cx = (pos_x[i] - t + 0.5f) / cols, cy = (pos_y[i] - t + 0.5f) / rows;
++                    index.push_back(i);
++                    centres.insert(centres.end(), {cx, cy, cx, cy});
++                }
++                const float cell[4] = {-1.0f / cols, -1.0f / rows, 1.0f / cols, 1.0f / rows};
++                ggml_backend_tensor_set(box.rows, index.data(), 0, ggml_nbytes(box.rows));
++                ggml_backend_tensor_set(box.centres, centres.data(), 0, ggml_nbytes(box.centres));
++                ggml_backend_tensor_set(box.cell, cell, 0, sizeof(cell));
++            }
+             for (const auto & candidate : q.candidates) {
+                 for (auto span : {spans.context, q.instruction, candidate, valen_spans::span{q.readout, q.readout + 1}}) {
+                     if (spans.valid) {
+@@ -130,15 +187,18 @@
+                 }
+             }
+         }
+-        ggml_backend_tensor_set(pool, data.data(), 0, ggml_nbytes(pool));
++        if (pool) ggml_backend_tensor_set(pool, data.data(), 0, ggml_nbytes(pool));
+     }
+     bool can_reuse(const llm_graph_params & params) override {
+-        return params.ubatch.n_tokens == n_tokens && valen_get_spans(params.ubatch).n_options == n_options;
++        return params.ubatch.n_tokens == n_tokens && valen_get_spans(params.ubatch).layout == layout;
+     }
+-    ggml_tensor * pool = nullptr;
++    struct box { ggml_tensor * rows; ggml_tensor * centres; ggml_tensor * cell; }; // see valen_grounding_graph()
++    ggml_tensor * pool = nullptr; // not set if all the questions are bbox questions
+     ggml_tensor * status = nullptr;
++    std::vector<box> boxes; // one per bbox question
+     const size_t n_tokens;
+     const size_t n_options;
++    const std::vector<int32_t> layout;
+ };
+ 
+ // the backbone is copied from llama_model_qwen35::graph, without the memory module
+@@ -204,7 +264,7 @@
+     // the head is always evaluated, so that the graph has the same nodes for every batch
+     cur = build_head(cur, inp_decision);
+ 
+-    // row i of the output is the score of option i
++    // row i of the output is the score of option i, a bbox question has 5 rows
+     cur = ggml_pad(ctx0, cur, 0, n_tokens - cur->ne[1], 0, 0);
+     cur = ggml_add(ctx0, cur, inp_decision->status);
+     cb(cur, "result_decision", -1);
+@@ -214,19 +274,42 @@
+     ggml_build_forward_expand(gf, cur);
+ }
+ 
+-// causal mask by batch order: the tokens of an image share the same position
++// mask by batch order: the tokens of an image share the same position
++// causal:              a token sees the tokens before it
++// block masks:         the state prefix sees the whole prefix and nothing after it
++//   prefix_lm:         the rest sees the prefix and the tokens before it
++//   block_bidirectional: the rest sees every token
++//   bbox_blocks:       the rest sees the prefix, the tokens of block 0 and the tokens of its own block,
++//                      see llama_batch_ext_set_decision_block(); every token if the batch has no blocks
+ class llm_graph_input_attn_valen : public llm_graph_input_attn_no_cache {
+ public:
+     using llm_graph_input_attn_no_cache::llm_graph_input_attn_no_cache;
+ 
++    std::string mask = "causal";
++
+     void set_input(const llama_ubatch * ubatch) override {
+         const int64_t n_kv     = self_kq_mask->ne[0];
+         const int64_t n_tokens = ubatch->n_tokens;
+ 
++        // the state prefix is the leading run of context tokens
++        int64_t n_prefix = 0;
++        if (mask != "causal" && ubatch->decision_order) {
++            while (n_prefix < n_tokens && ubatch->decision_order[n_prefix] == LLAMA_DECISION_ORDER_VALEN_CONTEXT) ++n_prefix;
++        }
++        const bool causal_suffix = n_prefix == 0 || mask == "prefix_lm";
++        const int32_t * block = mask == "bbox_blocks" ? ubatch->decision_block : nullptr;
++
+         const auto fill_mask = [&](auto * data, auto zero, auto ninf) {
+             for (int64_t i1 = 0; i1 < n_tokens; ++i1) {
+                 for (int64_t i0 = 0; i0 < n_kv; ++i0) {
+-                    const bool visible = i0 <= i1 && ubatch->seq_id[i0][0] == ubatch->seq_id[i1][0];
++                    bool visible = i0 < n_tokens && ubatch->seq_id[i0][0] == ubatch->seq_id[i1][0];
++                    if (i1 < n_prefix) {
++                        visible = visible && i0 < n_prefix;
++                    } else if (causal_suffix) {
++                        visible = visible && i0 <= i1;
++                    } else if (block) {
++                        visible = visible && (i0 < n_prefix || block[i0] == 0 || block[i0] == block[i1]);
++                    }
+                     data[i1 * n_kv + i0] = visible ? zero : ninf;
+                 }
+             }
+@@ -244,6 +327,7 @@
+ // same as build_attn_inp_no_cache(), with a causal mask even if the batch is processed by the encoder path
+ llm_graph_input_attn_no_cache * llama_model_valen::graph::build_attn_inp_causal() {
+     auto inp = std::make_unique<llm_graph_input_attn_valen>(hparams, cparams);
++    inp->mask = model.attention_mask;
+ 
+     const auto type_mask = cparams.flash_attn ? GGML_TYPE_F16 : GGML_TYPE_F32;
+ 
+@@ -398,12 +482,36 @@
+ 
+ 
+ ggml_tensor * llama_model_valen::graph::build_head(ggml_tensor * hidden, input_decision * inp) {
+-    inp->pool = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_tokens, 4 * inp->n_options);
+     inp->status = ggml_new_tensor_1d(ctx0, GGML_TYPE_F32, 1);
+-    ggml_set_input(inp->pool);
+     ggml_set_input(inp->status);
+     auto get = [&](const std::string & name) { return model.mixer_weights.at(name); };
+-    auto * features = valen_role_pool(ctx0, hidden, inp->pool);
+-    cb(features, "valen_roles", -1);
+-    return valen_mixer_graph(ctx0, features, model.mixer_layers, get);
++    ggml_tensor * scores = nullptr;
++    if (inp->n_options > 0) {
++        inp->pool = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_tokens, 4 * inp->n_options);
++        ggml_set_input(inp->pool);
++        auto * features = valen_role_pool(ctx0, hidden, inp->pool);
++        cb(features, "valen_roles", -1);
++        scores = valen_mixer_graph(ctx0, features, model.mixer_layers, get);
++    }
++    // the outputs of the questions, in order
++    ggml_tensor * cur = nullptr;
++    int64_t n_scores = 0;
++    for (const int32_t n : inp->layout) {
++        ggml_tensor * out;
++        if (n > 0) {
++            out = ggml_view_2d(ctx0, scores, 1, n, scores->nb[1], n_scores * scores->nb[1]);
++            n_scores += n;
++        } else {
++            inp->boxes.push_back({ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, 1 - n),
++                                  ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, 4, -n),
++                                  ggml_new_tensor_1d(ctx0, GGML_TYPE_F32, 4)});
++            const auto & box = inp->boxes.back();
++            ggml_set_input(box.rows);
++            ggml_set_input(box.centres);
++            ggml_set_input(box.cell);
++            out = valen_grounding_graph(ctx0, ggml_get_rows(ctx0, hidden, box.rows), box.centres, box.cell, get);
++        }
++        cur = cur ? ggml_concat(ctx0, cur, out, 1) : out;
++    }
++    return cur;
+ }
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -157,6 +157,7 @@
+         bool output;
+         bool is_prompt; // for stats tracking
+         int32_t decision_order = 0;
++        int32_t decision_block = 0;
+         int32_t i_embd = -1; // row in embd, -1 if this is a token
+     };
+     std::vector<token> tokens;
+@@ -237,6 +238,11 @@
+         tokens[idx].decision_order = order;
+     }
+ 
++    void set_decision_block(int32_t idx, int32_t block) {
++        GGML_ASSERT(idx >= 0 && idx < (int32_t)tokens.size());
++        tokens[idx].decision_block = block;
++    }
++
+     // render the sub-batch [off, off + n_tokens) into view, index i in view is index off + i here
+     void render(int32_t off, int32_t n_tokens) {
+         GGML_ASSERT(off >= 0 && off < size());
+@@ -251,6 +257,7 @@
+                 view.add(t.token, t.pos[0], t.id_slot, t.output);
+             }
+             view.tokens.back().decision_order = t.decision_order;
++            view.tokens.back().decision_block = t.decision_block;
+         }
+     }
+ };
+@@ -4387,6 +4394,9 @@
+                         if (!slot.task->decision.order.empty()) {
+                             batch.set_decision_order(batch.size() - 1, slot.task->decision.order[slot.prompt.n_tokens()]);
+                         }
++                        if (!slot.task->decision.block.empty()) {
++                            batch.set_decision_block(batch.size() - 1, slot.task->decision.block[slot.prompt.n_tokens()]);
++                        }
+                         slot.prompt.tokens.push_back(cur_tok);
+ 
+                         // break at the last user message, or at user messages at least min step past the last checkpoint
+@@ -4512,6 +4522,9 @@
+                 if (!slot.task->decision.order.empty()) {
+                     batch.set_decision_order(batch.size() - 1, slot.task->decision.order[cur_token_idx]);
+                 }
++                if (!slot.task->decision.block.empty()) {
++                    batch.set_decision_block(batch.size() - 1, slot.task->decision.block[cur_token_idx]);
++                }
+                 slot.prompt.tokens.push_back(cur_tok);
+                 continue;
+             }
+@@ -4545,6 +4558,11 @@
+                     batch.set_decision_order(row, slot.task->decision.order[index]);
+                 }
+             }
++            if (!slot.task->decision.block.empty()) {
++                for (int32_t row = first_media_row; row < batch.size(); ++row) {
++                    batch.set_decision_block(row, slot.task->decision.block[cur_token_idx + row - first_media_row]);
++                }
++            }
+             slot.prompt.tokens.push_back_placeholder(chunk.get());
+         }
+ 
+--- a/tools/server/server-decision.cpp
++++ b/tools/server/server-decision.cpp
+@@ -13,6 +13,7 @@
+         case SERVER_DECISION_QUESTION_CHOICE: return "choice";
+         case SERVER_DECISION_QUESTION_SCORE:  return "score";
+         case SERVER_DECISION_QUESTION_NOUL:   return "noul";
++        case SERVER_DECISION_QUESTION_BBOX:   return "bbox";
+     }
+     return "";
+ }
+@@ -162,6 +163,8 @@
+     } else if (model_type == COMMON_DECISION_TYPE_VALEN) {
+         n_options_max = 255;
+         noul_true_first = true;
++        valen_fold_criteria = decision_meta_str(model, "valen.decision.version") == "1.5";
++        valen_grounding = !decision_meta_str(model, "valen.grounding.width").empty();
+         const auto limit = decision_meta_str(model, "valen.max_length");
+         valen_max_length = std::strtoul(limit.c_str(), nullptr, 10);
+         if (valen_max_length == 0 || valen_max_length > 262144) throw std::runtime_error("invalid Valen max_length");
+@@ -353,12 +356,32 @@
+             if (noul_true_first || (noul_criteria_order && criteria.is_object() && criteria.size() == 2 && criteria.begin().key() == "true")) {
+                 std::swap(question.options[0], question.options[1]);
+             }
++        } else if (type_name == "bbox" && type == COMMON_DECISION_TYPE_VALEN) {
++            question.type = SERVER_DECISION_QUESTION_BBOX;
++            if (!valen_grounding) {
++                throw err("this model has no grounding head, it cannot answer bbox questions");
++            }
++            const json image = q.contains("image") ? q.at("image") : json(0);
++            if (!image.is_number_integer() || image.get<int64_t>() < 0) {
++                throw err("bbox image must be a nonnegative image index");
++            }
++            question.image = image.get<size_t>();
++            question.options = {{"x1", {}}, {"y1", {}}, {"x2", {}}, {"y2", {}}, {"confidence", {}}};
+         } else {
+             throw err("\"type\" must be one of: choice, score, noul");
+         }
+ 
+-        if (type == COMMON_DECISION_TYPE_VALEN) {
++        if (type == COMMON_DECISION_TYPE_VALEN && question.type != SERVER_DECISION_QUESTION_BBOX) {
+             if (question.type == SERVER_DECISION_QUESTION_NOUL) {
++                if (valen_fold_criteria && criteria.is_object() && !criteria.empty()) {
++                    if (criteria.size() != 2 || !criteria.contains("true") || !criteria.contains("false") ||
++                        !criteria.at("true").is_string() || !criteria.at("false").is_string()) {
++                        throw err("Noul criteria must define true and false");
++                    }
++                    question.instructions = instructions.get<std::string>() +
++                        "\nTrue criterion: " + criteria.at("true").get<std::string>() +
++                        "\nFalse criterion: " + criteria.at("false").get<std::string>();
++                }
+                 question.options = {{"true", "True / \u662f\uff1a\u6ee1\u8db3\u95ee\u9898\u4e2d\u7684\u6761\u4ef6\u3002"},
+                                     {"false", "False / \u5426\uff1a\u4e0d\u6ee1\u8db3\u95ee\u9898\u4e2d\u7684\u6761\u4ef6\u3002"}};
+             }
+@@ -1391,6 +1414,7 @@
+         }
+     };
+     json messages;
++    bool has_video = false;
+     if (state.is_string()) {
+         messages = json::array({json{{"role", "user"}, {"content", state}}});
+     } else if (state.is_object() && state.contains("messages") && state.at("messages").is_array()) {
+@@ -1407,6 +1431,7 @@
+         } else if (content.is_array()) {
+             for (const auto & part : content) {
+                 const auto kind = json_value(part, "type", std::string());
++                has_video |= kind == "video";
+                 if ((kind == "image" || kind == "video") && !files.empty()) continue;
+                 if (json_value(part, "type", std::string()) != "text" || !part.contains("text") || !part.at("text").is_string()) {
+                     throw std::invalid_argument("Valen currently accepts text content parts only");
+@@ -1440,6 +1465,17 @@
+     }
+     task.decision.order.assign(task.tokens.size(), LLAMA_DECISION_ORDER_VALEN_CONTEXT);
+     task.decision.n_scores = 0;
++    // the entries of image i are block i + 1
++    task.decision.block.assign(task.tokens.size(), 0);
++    size_t n_images = 0;
++    for (size_t i = 0; i < task.tokens.size(); ++i) {
++        if (task.tokens[i] != LLAMA_TOKEN_NULL) continue;
++        const size_t n = mtmd_input_chunk_get_n_tokens(task.tokens.find_chunk(i).get());
++        std::fill_n(task.decision.block.begin() + i, n, (int32_t) ++n_images);
++        i += n - 1;
++    }
++    // after the state, the questions that are not bbox questions are block 1, bbox question i is block i
++    int32_t block = 0;
+     auto append = [&](const std::string & text, int32_t order = LLAMA_DECISION_ORDER_NONE, size_t start = 0, size_t end = 0) {
+         const auto normalized = nfc(text);
+         start = nfc(text.substr(0, start)).size();
+@@ -1453,6 +1489,7 @@
+             task.tokens.push_back(token);
+             const bool in_span = order != LLAMA_DECISION_ORDER_NONE && byte < end && byte + piece.size() > start;
+             task.decision.order.push_back(in_span ? order : LLAMA_DECISION_ORDER_NONE);
++            task.decision.block.push_back(block);
+             marked += in_span;
+             byte += piece.size();
+             rebuilt += piece;
+@@ -1469,6 +1506,17 @@
+         const std::string instruction = q.instructions.get<std::string>();
+         check(instruction);
+         const auto prefix = "Question " + std::to_string(i + 1) + "\nTask: " + decision_question_type_name(q.type) + "\nQuestion: ";
++        block = q.type == SERVER_DECISION_QUESTION_BBOX ? (int32_t) i + 1 : 1;
++        if (q.type == SERVER_DECISION_QUESTION_BBOX) {
++            // the chunks of a video are not told from images
++            if (has_video) throw std::invalid_argument("bbox questions are not supported with video input");
++            if (q.image >= n_images) {
++                throw std::invalid_argument(string_format("questions.%s: bbox refers to image %zu, state has %zu", q.id.c_str(), q.image, n_images));
++            }
++            append(prefix + instruction + "\nImage: " + std::to_string(q.image + 1) + "\n", LLAMA_DECISION_ORDER_QUESTION_BBOX + (int32_t) q.image, prefix.size(), prefix.size() + instruction.size());
++            task.decision.n_scores += q.options.size();
++            continue;
++        }
+         const int32_t order = q.type == SERVER_DECISION_QUESTION_NOUL ? LLAMA_DECISION_ORDER_QUESTION_NOUL :
+                               q.type == SERVER_DECISION_QUESTION_CHOICE ? LLAMA_DECISION_ORDER_QUESTION_CHOICE : LLAMA_DECISION_ORDER_QUESTION_SCORE;
+         append(prefix + instruction + "\nCandidates:\n", order, prefix.size(), prefix.size() + instruction.size());
+@@ -1482,8 +1530,10 @@
+             append("\n");
+         }
+     }
++    block = 0;
+     append("<|im_end|>\n<|im_start|>assistant\n");
+     for (size_t i = 0; i < questions.size(); ++i) {
++        block = questions[i].type == SERVER_DECISION_QUESTION_BBOX ? (int32_t) i + 1 : 1;
+         if (!append("Question " + std::to_string(i + 1) + " Decision:")) throw std::invalid_argument("Empty Valen readout");
+         task.decision.order.back() = LLAMA_DECISION_ORDER_VALEN_READOUT;
+         append("\n");
+@@ -1587,6 +1637,7 @@
+                 case SERVER_DECISION_QUESTION_NOUL:   order = LLAMA_DECISION_ORDER_QUESTION_NOUL;   break;
+                 case SERVER_DECISION_QUESTION_CHOICE: order = LLAMA_DECISION_ORDER_QUESTION_CHOICE; break;
+                 case SERVER_DECISION_QUESTION_SCORE:  order = LLAMA_DECISION_ORDER_QUESTION_SCORE;  break;
++                case SERVER_DECISION_QUESTION_BBOX:   break; // Valen only
+             }
+         } else if (string_starts_with(piece, CLEF_MARK_OPTION)) {
+             piece = piece.substr(CLEF_MARK_OPTION.size());
+@@ -1689,6 +1740,7 @@
+         case SERVER_DECISION_QUESTION_CHOICE: return decision_confidence_choice(probs);
+         case SERVER_DECISION_QUESTION_SCORE:  return decision_confidence_score(probs);
+         case SERVER_DECISION_QUESTION_NOUL:   break;
++        case SERVER_DECISION_QUESTION_BBOX:   break;
+     }
+     throw std::runtime_error("no confidence for this question type");
+ }
+@@ -1738,6 +1790,17 @@
+ 
+     json answer = json{{"type", decision_question_type_name(question.type)}};
+ 
++    if (question.type == SERVER_DECISION_QUESTION_BBOX) {
++        // the outputs are not logits, see valen_grounding_graph()
++        auto round4 = [](double value) { return std::round(value * 1e4) / 1e4; };
++        const auto & s = scores[0];
++        const double x1 = round4(s[0]), y1 = round4(s[1]), x2 = round4(s[2]), y2 = round4(s[3]);
++        answer["bbox"]       = json::array({x1, y1, x2, y2});
++        answer["point"]      = json::array({round4((x1 + x2) / 2), round4((y1 + y2) / 2)});
++        answer["confidence"] = round4(std::min(std::max((double) s[4], 0.0), 1.0));
++        return answer;
++    }
++
+     if (question.type == SERVER_DECISION_QUESTION_NOUL) {
+         if (type == COMMON_DECISION_TYPE_LEV) {
+             double expected = 0.0;
+@@ -1888,6 +1951,8 @@
+                 }
+             }
+             item["criteria"] = criteria;
++        } else if (kind == "bbox") {
++            if (q.contains("image")) item["image"] = q.at("image");
+         } else if (kind != "predicate") {
+             throw invalid;
+         }
+@@ -1911,6 +1976,10 @@
+         json entry{{"name", name}, {"type", kind}};
+         if (kind == "predicate") {
+             entry["probability"] = old.at("noul");
++        } else if (kind == "bbox") {
++            entry["bbox"] = old.at("bbox");
++            entry["point"] = old.at("point");
++            entry["confidence"] = old.at("confidence");
+         } else {
+             const auto & candidates = q.at(kind == "choice" ? "choices" : "levels");
+             std::vector<double> probs;
+--- a/tools/server/server-decision.h
++++ b/tools/server/server-decision.h
+@@ -15,6 +15,7 @@
+     SERVER_DECISION_QUESTION_CHOICE,
+     SERVER_DECISION_QUESTION_SCORE,
+     SERVER_DECISION_QUESTION_NOUL,
++    SERVER_DECISION_QUESTION_BBOX, // Valen: the options are the 5 model outputs, the box and its confidence
+ };
+ 
+ struct server_decision_option {
+@@ -27,6 +28,7 @@
+     server_decision_question_type type;
+     json instructions;
+     double valen_temperature = 1.0;
++    size_t image = 0; // bbox: index of the image in the state
+     std::vector<server_decision_option> options; // in the order of the model outputs
+ };
+ 
+@@ -118,6 +120,8 @@
+ private:
+     void fill_task_valen(const json & state, const std::vector<server_decision_question> & questions, const std::vector<raw_buffer> & files, mtmd_context * mctx, const mtmd_helper_init_opt & init_opt, server_task & task) const;
+     size_t valen_max_length = 0;
++    bool valen_fold_criteria = false; // Valen-Decision-1.5 reads a noul rubric from the instructions
++    bool valen_grounding = false; // the model has a grounding head for bbox questions
+     mtmd_helper_video_init_params valen_video_params = {};
+     std::vector<std::string> valen_reserved_tokens;
+     const llama_vocab * vocab = nullptr;
+--- a/tools/server/server-task.h
++++ b/tools/server/server-task.h
+@@ -215,6 +215,8 @@
+         // the scores are the first n_scores rows of the embeddings
+         std::vector<int32_t> order;
+         int32_t              n_scores = 0;
++        // Valen: one value per prompt token, see llama_batch_ext_set_decision_block()
++        std::vector<int32_t> block;
+     };
+     decision decision;
+ 

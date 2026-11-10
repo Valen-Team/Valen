@@ -1,37 +1,84 @@
 {
-  "version": "0.1.0",
-  "artifact": "valen-gguf-runtime-0.1.0-linux-x86_64.tar.gz",
-  "bytes": 31797146,
-  "sha256": "2fcc903eb853b8c04498bb4ee716c7c3662d1d07eb5c2d89c11310716ae04c0e",
+  "version": "0.2.0",
+  "artifact": "valen-gguf-runtime-0.2.0-linux-x86_64.tar.gz",
+  "bytes": 32070054,
+  "sha256": "4b3b6035adbb99f3bb47c75e55804e1f650f96b35b825d95a6cd4ae85ce39537",
+  "release": "https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0",
+  "models": [
+    "Valen-Decision-1.5",
+    "Valen-Decision-1.0"
+  ],
   "source": {
     "llama_cpp_base": "1a0b56cec73dac938e0602c974b21dc8e2862830",
-    "ollama_base": "d44c2581904a98430e348d89cc2af1529b1808a0",
+    "base_runtime": "0.1.0",
+    "base_source_sha256": "f6942f3c6638e57c7fc38319af60b391393546f12b505eb0c8401bb7afa29149",
     "patch_sha256": "20c8fcb50920ae8e96b158c30c277ab384fb9716d8d51fb01966b562b8e57732",
-    "ollama_patch_sha256": "294f3aa7e73d3da6b9e9de40d364210d924a31af2595606ac039de4fa0428b01",
-    "status": "custom runtime; llama.cpp measured; custom Ollama Go build, tests and real F32/Q8 imports/text/image/video/protocol/isolation validated on CPU; no unmodified upstream support"
+    "decision_1_5_patch": "serving/gguf/valen-decision-1.5-runtime.patch",
+    "decision_1_5_patch_sha256": "857d670488e0c796b4346b893353cc0d7a5b588cf0d5393c88d58d939f843bb8",
+    "source_sha256": "cce92721e589f61e31108a504bb2f034f48038f7effacc1ba34fa98247d868b5"
   },
   "compiler": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0",
   "validated": {
     "passed": true,
-    "archive_sha256": "2fcc903eb853b8c04498bb4ee716c7c3662d1d07eb5c2d89c11310716ae04c0e",
+    "archive_sha256": "4b3b6035adbb99f3bb47c75e55804e1f650f96b35b825d95a6cd4ae85ce39537",
     "all_internal_hashes_match": true,
     "libraries_from_extracted_package": true,
-    "answers": {
-      "sentiment": {
-        "type": "choice",
-        "choice": "positive",
-        "probabilities": {
-          "positive": 0.9997288261216173,
-          "negative": 0.00027117387838261755
+    "valen_decision_1_5": {
+      "model": "Valen-Decision-1.5-0.8B-Q8_0.gguf",
+      "text_answers": {
+        "sentiment": {
+          "type": "choice",
+          "choice": "positive",
+          "probabilities": {
+            "positive": 0.9984343646636709,
+            "negative": 0.0015656353363292506
+          },
+          "confidence": 0.9968687293273417
+        }
+      },
+      "repeat_equal": true,
+      "bbox_answers": {
+        "mug": {
+          "type": "bbox",
+          "bbox": [
+            0.2605,
+            0.3101,
+            0.8244,
+            0.8232
+          ],
+          "point": [
+            0.5425,
+            0.5667
+          ],
+          "confidence": 0.9519
         },
-        "confidence": 0.9994576522432346
+        "full": {
+          "type": "noul",
+          "noul": 0.9713351087170098
+        }
       }
     },
-    "model": "cached 0.8B Q8_0",
-    "no_model_download": true,
-    "scope": "Ubuntu 22.04 Linux x86-64 CPU text; no media/GPU/other platform claim"
+    "valen_decision_1_0": {
+      "model": "Valen-0.8B-Q8_0.gguf",
+      "text_answers": {
+        "sentiment": {
+          "type": "choice",
+          "choice": "positive",
+          "probabilities": {
+            "positive": 0.9997288261216173,
+            "negative": 0.00027117387838261755
+          },
+          "confidence": 0.9994576522432346
+        }
+      }
+    },
+    "native_comparison": {
+      "scope": "Valen-Decision-1.5-0.8B, Linux x86-64 CPU, compared with native model.predict in FP32",
+      "F32": "probability max 0.00005 on text and image requests; boxes within 0.005",
+      "Q8_0": "probability max 0.02081 on the text request"
+    },
+    "scope": "Ubuntu 22.04 Linux x86-64 CPU; text, image and bbox requests"
   },
-  "model_bytes_downloaded_to_client": 0,
   "artifact_uploaded_from": "cluster",
   "video_enabled": false
 }

@@ -7,9 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class Question(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    type: Literal["choice", "noul", "score"]
+    type: Literal["choice", "noul", "score", "bbox"]
     instructions: str = Field(min_length=1)
     criteria: dict[str, str] | list[str] | None = None
+    # bbox: index of the state image to localize in.
+    image: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def check(self):
@@ -19,6 +21,9 @@ class Question(BaseModel):
                 or set(self.criteria) != {"true", "false"}
             ):
                 raise ValueError("noul criteria must define true and false")
+        elif self.type == "bbox":
+            if self.criteria is not None:
+                raise ValueError("bbox takes no criteria")
         elif self.type == "choice":
             if (
                 not isinstance(self.criteria, dict)

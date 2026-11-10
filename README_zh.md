@@ -42,6 +42,7 @@ Valen-Decision（万澜）将视觉感知引入 System One 决策。受 [Jev](ht
 
 ## 最新动态
 
+- **2026-11-10**：Valen-Decision-1.5 全尺寸（0.8B 至 27B）GGUF 随 [GGUF 运行时 0.2.0](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0) 发布；这是 Valen 补丁版 llama.cpp 服务，支持文本与图片输入，并可回答 bbox 问题。见 [GGUF 指南](https://valen-team.github.io/zh-Hans/docs/valen/gguf/)。
 - **2026-11-09**：发布 [Valen-Decision-1.5](https://huggingface.co/Valen-Team)，从 0.8B 到 27B 全尺寸覆盖。采用全新的分块双向注意力机制，在取得多模态 SOTA 处理能力的同时，保持强劲的文本处理能力。Valen-Decision-1.5 还采用双头机制，支持 bbox 输出，展现出极强的 Grounding 能力。
 - **2026-10-29**：[Python SDK](https://github.com/Valen-Team/valen-sdk-python/blob/main/README_zh.md#与大模型对比) 新增 `Valen.llm()`：把同一套问题交给 GPT、Claude 或 Gemini，返回同样的类型化答案，可在自己的代码里直接对比 Valen 与大模型的决策、token 和延迟。
 - **2026-10-29**：发布面向 Claude Code、Cursor、Codex 等编程 agent 的 [Valen agent skill](https://github.com/Valen-Team/skills)，官网同步提供 [`llms.txt`](https://valen-team.github.io/zh-Hans/llms.txt)、每个文档页的 Markdown 版本和 [OpenAPI 规格](https://valen-team.github.io/openapi.json)。[JevalKit](https://github.com/Valen-Team/JevalKit) 新增 OpenAI、Anthropic、Gemini 通用大模型基线，便于直接对比。

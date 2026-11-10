@@ -15,6 +15,7 @@ from vllm.multimodal import MULTIMODAL_REGISTRY
 from vllm.tokenizers.registry import cached_tokenizer_from_config
 
 from valen_vllm.blocks import GLUE, block_attention, token_segments
+from valen_vllm.grounding import GroundingHead
 from valen_vllm.head import ValenMixerHead
 from valen_vllm.pooler import ValenPooler
 
@@ -78,7 +79,8 @@ class ValenQwenForDecisionMaking(_Base):
         if mask not in ("block_bidirectional", "bbox_blocks"):
             raise ValueError(f"valen_full_attention_mask={mask} is not served by vLLM")
         tokenizer = cached_tokenizer_from_config(vllm_config.model_config)
-        self.glue = [tokenizer.encode(text, add_special_tokens=False) for text in GLUE]
+        self.encode = lambda text: tokenizer.encode(text, add_special_tokens=False)
+        self.glue = [self.encode(text) for text in GLUE]
         self.bidirectional = mask == "block_bidirectional"
         for layer in self.language_model.model.layers:
             if layer.layer_type == "full_attention":
@@ -101,7 +103,13 @@ class ValenQwenForDecisionMaking(_Base):
             starts = metadata[self.block_layers[0].attn.layer_name].query_start_loc
             starts = starts.tolist()
             blocks = [
-                (a, b, token_segments(input_ids[a:b], self.glue, self.bidirectional))
+                (
+                    a,
+                    b,
+                    token_segments(
+                        input_ids[a:b], self.glue, self.bidirectional, self.encode
+                    ),
+                )
                 for a, b in zip(starts, starts[1:])
                 if b > a
             ]
@@ -116,30 +124,31 @@ class ValenQwenForDecisionMaking(_Base):
 
     def _init_pooler(self, vllm_config, prefix=""):
         config = vllm_config.model_config.hf_config
+        hidden_size = config.text_config.hidden_size
+        grounding = config.valen_grounding
         return ValenPooler(
-            ValenMixerHead(config.text_config.hidden_size, config.valen_head)
+            ValenMixerHead(hidden_size, config.valen_head),
+            GroundingHead(hidden_size, grounding["width"], grounding["hidden"])
+            if grounding
+            else None,
         )
 
     def load_weights(self, weights):
         from vllm.model_executor.model_loader.weight_utils import default_weight_loader
         from vllm.model_executor.models.qwen3_5 import Qwen3_5ForConditionalGeneration
 
-        params = dict(self.pooler.head.named_parameters())
+        params = dict(self.pooler.named_parameters())
         seen = set()
 
         def backbone():
             for name, value in weights:
-                if name.startswith("head."):
-                    key = name.removeprefix("head.")
-                    default_weight_loader(params[key], value)
-                    seen.add(key)
+                if name.startswith(("head.", "grounding.")):
+                    default_weight_loader(params[name], value)
+                    seen.add(name)
                 elif name.startswith("backbone."):
                     yield "model." + name.removeprefix("backbone."), value
-                elif name.startswith("grounding."):
-                    # The bbox head has no readout path in this plugin.
-                    continue
                 else:
                     yield name, value
 
         loaded = Qwen3_5ForConditionalGeneration.load_weights(self, backbone())
-        return loaded | {"pooler.head." + key for key in seen}
+        return loaded | {"pooler." + name for name in seen}

@@ -50,6 +50,21 @@ The browser builder accepts only the verified Valen 0.8B architecture and templa
 
 Valen-Decision-1.5 checkpoints export the same layout with two additions. The decision graph takes `block_mask`, an additive float32 `[sequence, sequence]` mask for the full-attention layers that the SDKs build from the compiled prefix length and segment ids, and returns `final_hidden` next to `logits`. A `grounding` graph answers bbox questions from the decision and image-token rows of `final_hidden`.
 
+This holds for every variant. `onnx_v2_attention.py` replaces each `GroupQueryAttention` node with explicit attention over `block_mask` in the CPU FP32 graph, the CUDA FP16 graph and the browser graph built from the community template. `block_mask` stays float32 at the graph boundary; FP16 graphs clip it to the float16 range and cast it inside the graph, so the SDKs feed the same mask to all variants. `final_hidden` is float32 in all variants.
+
+Add a validated variant to a bundle that already holds others with `onnx_v2_assemble.py`:
+
+```sh
+python scripts/export/qwen/onnx_v2_assemble.py \
+  --base /path/to/cpu-bundle --export /path/to/new-cuda-bundle \
+  --variant cuda-fp16 --output /path/to/staging-bundle
+python scripts/export/qwen/onnx_v2_assemble.py \
+  --base /path/to/cpu-bundle --export /path/to/new-browser-bundle \
+  --variant web-portable --output /path/to/staging-bundle
+```
+
+Files whose content the base bundle already holds keep their name and are shared between variants (vision, grounding, head weights, tokenizer files; for `web-portable` also the embedding). The remaining files are written as `onnx/<variant>-<name>`, with the external-data locations inside the graphs rewritten, and the merged `valen_onnx.json` gains the variant's `graphs`, `components`, `files`, `sha256`, `io_schema` and `download_bytes`. The base directory is only read; the staging directory holds the new variant's files and the merged manifest, ready to validate with `Valen.local(staging, variant=..., verify=True)` and to upload next to the published files.
+
 Bundles contain embedding, optional vision and fused decision graphs. Decision returns candidate logits after role pooling and Mixer. This graph layout avoids exporting language generation logits and avoids moving full hidden states back to the host. CPU/CUDA graphs use ORT contrib operators and are not universal standard-ONNX artifacts. Keep external data paths intact.
 
 The manifest records native checkpoint/config hashes, graph ABI, precision, file hashes, exporter revision and component download lists. `quality_status` initially marks unvalidated candidates; export success never promotes a model automatically. Validate with `Valen.local(path, local_files_only=True, verify=True)` and complete native parity, frozen quality and target-device tests before publication.

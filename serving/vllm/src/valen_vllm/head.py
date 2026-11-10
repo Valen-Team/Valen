@@ -6,9 +6,12 @@ backbone runs once for all questions; the head batches candidates across request
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import groupby
 
 import torch
 from torch import nn
+
+from valen_vllm.blocks import PREFIX
 
 
 @dataclass(frozen=True)
@@ -16,24 +19,49 @@ class ValenQuestion:
     instruction: tuple[int, int]
     candidates: tuple[tuple[int, int], ...]
     decision: int
+    # bbox: first token of the referenced image after expansion, then rows, cols.
+    image: tuple[int, int, int] | None = None
 
 
-def pack_valen_layout(length: int, context_end: int, questions) -> list[int]:
+def pack_valen_layout(
+    length: int, context_end: int, questions, segments=None
+) -> list[int]:
     """Pack pre-expansion positions into the request's integer layout.
 
     Header: prompt length, context end, question count. Each question stores
-    instruction start/end, decision position, candidate count, then span pairs.
+    instruction start/end, decision position, candidate count, then span pairs;
+    a bbox question has no candidates and stores its image instead. Block ids
+    of the suffix tokens follow as (id, run length) pairs.
     """
     layout = [length, context_end, len(questions)]
     for q in questions:
         layout.extend((*q.instruction, q.decision, len(q.candidates)))
         for span in q.candidates:
             layout.extend(span)
+        if q.image is not None:
+            layout.extend(q.image)
+    for segment, run in groupby(segments or ()):
+        layout.extend((segment, len(list(run))))
     return layout
 
 
 def parse_valen_layout(layout: Sequence[int], length: int):
     """Validate a layout and place its roles after image placeholder expansion."""
+    return _parse(layout, length)[:2]
+
+
+def valen_segments(layout: Sequence[int], length: int):
+    """Per-token block ids for block attention; None keeps causal attention."""
+    context, _, runs = _parse(layout, length)
+    if not runs:
+        return None
+    segments = [PREFIX] * context
+    for segment, run in zip(runs[::2], runs[1::2]):
+        segments.extend([segment] * run)
+    return torch.tensor(segments)
+
+
+def _parse(layout, length):
     if len(layout) < 3 or any(type(v) is not int for v in layout):
         raise ValueError("Valen decision_layout must contain integers")
     original, context, count = layout[:3]
@@ -46,9 +74,16 @@ def parse_valen_layout(layout: Sequence[int], length: int):
             raise ValueError("Valen decision_layout is truncated")
         start, end, decision, n = layout[cursor : cursor + 4]
         cursor += 4
-        if not context <= start < end <= decision < original or not 1 <= n <= 255:
+        if not context <= start < end <= decision < original or not 0 <= n <= 255:
             raise ValueError("Valen decision_layout has an invalid question")
-        spans = []
+        spans, image = [], None
+        if n == 0:
+            image = tuple(layout[cursor : cursor + 3])
+            cursor += 3
+            if len(image) != 3 or min(image) < 0 or (
+                image[0] + image[1] * image[2] > context + shift
+            ):
+                raise ValueError("Valen decision_layout has an invalid image")
         for _ in range(n):
             if cursor + 2 > len(layout):
                 raise ValueError("Valen decision_layout is truncated")
@@ -58,12 +93,15 @@ def parse_valen_layout(layout: Sequence[int], length: int):
                 raise ValueError("Valen decision_layout has an invalid candidate")
             spans.append((a + shift, b + shift))
         questions.append(
-            ValenQuestion((start + shift, end + shift), tuple(spans), decision + shift)
+            ValenQuestion(
+                (start + shift, end + shift), tuple(spans), decision + shift, image
+            )
         )
-    if cursor != len(layout):
+    runs = list(layout[cursor:])
+    if runs and (len(runs) % 2 or sum(runs[1::2]) != original - context):
         raise ValueError("Valen decision_layout has trailing values")
     # Media expands inside the context, not before its first token.
-    return context + shift, questions
+    return context + shift, questions, runs
 
 
 class MixerBlock(nn.Module):

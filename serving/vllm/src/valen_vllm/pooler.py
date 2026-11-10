@@ -3,13 +3,31 @@
 import torch
 from vllm.model_executor.layers.pooler import Pooler, PoolingParamsUpdate
 
-from valen_vllm.head import pool_features
+from valen_vllm.head import parse_valen_layout, pool_features
 
 
 class ValenPooler(Pooler):
-    def __init__(self, head):
+    def __init__(self, head, grounding=None):
         super().__init__()
         self.head = head
+        self.grounding = grounding
+
+    def answer(self, hidden, layout):
+        """Candidate logits, or a bbox question's five values, in question order."""
+        _, questions = parse_valen_layout(layout, len(hidden))
+        counts = [len(q.candidates) for q in questions]
+        parts = (
+            list(self.head(pool_features(hidden, layout)).split(counts))
+            if any(counts)
+            else [None] * len(counts)
+        )
+        for index, q in enumerate(questions):
+            if q.image is not None:
+                start, rows, cols = q.image
+                parts[index] = self.grounding(
+                    hidden[q.decision], hidden[start : start + rows * cols], (rows, cols)
+                )
+        return torch.cat(parts)
 
     def get_supported_tasks(self):
         return {"plugin"}
@@ -46,5 +64,5 @@ class ValenPooler(Pooler):
                 raise ValueError(
                     "Valen needs a complete prefill, without prefix reuse or chunking"
                 )
-            outputs.append(self.head(pool_features(hidden, layout)))
+            outputs.append(self.answer(hidden, layout))
         return outputs

@@ -32,7 +32,9 @@ def normalize_config(config, *args, **kwargs):
         return config
     config.architectures = ["Qwen3_5ForConditionalGeneration"]
     config.model_type = "qwen3_5"
-    dtype = config.valen_backbone_autocast_dtype or "float32"
+    # Without autocast the backbone runs in its stored dtype, as model.predict does.
+    stored = str(getattr(config, "dtype", None) or "float32").removeprefix("torch.")
+    dtype = config.valen_backbone_autocast_dtype or stored
     config.text_config.dtype = getattr(torch, dtype)
     config.text_config._valen_backbone_dtype = dtype
     return config

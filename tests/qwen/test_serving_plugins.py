@@ -115,8 +115,9 @@ def sglang():
 @pytest.fixture
 def vllm():
     with patch.object(sys, "path", [str(ROOT / "serving/vllm/src"), *sys.path]):
-        from valen_vllm import blocks, compiler, configuration, protocol
-        yield SimpleNamespace(blocks=blocks, compiler=compiler, configuration=configuration, protocol=protocol)
+        from valen_vllm import answers, blocks, compiler, configuration, grounding, head, protocol
+        yield SimpleNamespace(answers=answers, blocks=blocks, compiler=compiler, configuration=configuration,
+                              grounding=grounding, head=head, protocol=protocol)
 
 
 def request(questions, state):
@@ -204,22 +205,47 @@ def test_sglang_causal_layout_is_unchanged_and_rejects_rubrics(sglang, tmp_path)
 
 @pytest.mark.parametrize("images", [0, 2])
 def test_vllm_prompt_and_token_segments_match_the_native_compiler(vllm, tmp_path, images):
-    questions = {k: q for k, q in QUESTIONS.items() if q["type"] != "bbox"}
+    questions = {k: q for k, q in QUESTIONS.items() if images or q["type"] != "bbox"}
     state, compiled = native(tmp_path, questions, images)
     body = request(questions, state)
     body.questions["urgent"].criteria = questions["urgent"]["criteria"]
     messages, _ = vllm.compiler.valen_messages(body, Tokenizer())
-    ids, _ = vllm.compiler.encode_valen(Tokenizer(), body, messages, max_length=4096,
-                                        image_token_counts=[], fold=True)
+    counts = [GRID[0] * GRID[1]] * images
+    short, layout = vllm.compiler.encode_valen(Tokenizer(), body, messages, max_length=4096, image_token_counts=counts,
+                                               fold=True, mask="bbox_blocks", image_grids=[GRID] * images)
     branch = compiled.questions[0].branches[0]
-    ids = torch.tensor(expand(ids))
+    ids = torch.tensor(expand(short))
     assert torch.equal(ids, branch.inputs["input_ids"][0])
-    glue = [Tokenizer().encode(text) for text in vllm.blocks.GLUE]
-    assert torch.equal(vllm.blocks.token_segments(ids, glue), reference_segments("bbox_blocks", branch))
+    encode = Tokenizer().encode
+    glue = [encode(text) for text in vllm.blocks.GLUE]
+    expected = reference_segments("bbox_blocks", branch)
+    assert torch.equal(vllm.blocks.token_segments(ids, glue, encode=encode), expected)
+    # The endpoint checks the token reading against the compiler's blocks before expansion.
+    shift = len(ids) - len(short)
+    assert torch.equal(vllm.blocks.token_segments(torch.tensor(short), glue, encode=encode),
+                       vllm.head.valen_segments(layout, len(ids))[shift:])
+    assert torch.equal(vllm.head.valen_segments(layout, len(ids)), expected)
+    _, parsed = vllm.head.parse_valen_layout(layout, len(ids))
+    for q, native_question in zip(parsed, compiled.questions):
+        branch = native_question.branches[0]
+        assert q.decision == branch.decision_position
+        if native_question.kind == "bbox":
+            start, rows, cols = q.image
+            assert (rows, cols) == tuple(branch.image_grid)
+            assert branch.image_positions.tolist() == list(range(start, start + rows * cols))
     shared = vllm.blocks.token_segments(ids, glue, bidirectional=True)
     context = branch.context_span[1]
     assert shared.tolist() == [-1] * context + [0] * (len(ids) - context)
     assert vllm.blocks.token_segments(torch.zeros(9, dtype=torch.long), glue) is None
+    # A header copied into question text moves the token reading away from the compiler's blocks.
+    if images:
+        body.questions["urgent"].instructions = "Question 3\nTask: bbox"
+        body.questions["where"].type, body.questions["where"].criteria = "noul", None
+        short, layout = vllm.compiler.encode_valen(Tokenizer(), body, messages, max_length=4096,
+                                                   image_token_counts=counts, fold=True, mask="bbox_blocks",
+                                                   image_grids=[GRID] * images)
+        assert not torch.equal(vllm.blocks.token_segments(torch.tensor(short), glue, encode=encode),
+                               vllm.head.valen_segments(layout, len(short) + shift)[shift:])
     with pytest.raises(ValueError, match="omit criteria"):
         vllm.compiler.encode_valen(Tokenizer(), body, messages, max_length=4096, image_token_counts=[])
 
@@ -235,6 +261,20 @@ def test_vllm_protocol_and_config(vllm):
     legacy, current = Config(), Config(valen_full_attention_mask="bbox_blocks", valen_grounding={"width": 8, "hidden": 8})
     assert (legacy.valen_full_attention_mask, legacy.valen_grounding, legacy.valen_decision_version) == ("causal", None, "1.0")
     assert current.valen_decision_version == "1.5"
+
+
+def test_vllm_answers_read_five_bbox_values_between_candidate_logits(vllm):
+    body = request({k: QUESTIONS[k] for k in ("where", "severity")}, {})
+    values = [0.1, 0.2, 0.5, 0.6, 0.7, 0.0, 0.0, 0.0]
+    result = vllm.answers.answers(body, values)
+    assert result["where"] == vllm.grounding.box_answer(values[:5])
+    assert list(result["severity"]["probabilities"].values()) == pytest.approx([1 / 3] * 3)
+    with pytest.raises(RuntimeError):
+        vllm.answers.answers(body, values[:-1])
+    question = vllm.protocol.Question(type="bbox", instructions="the stamp", image=1)
+    assert (question.image, question.criteria) == (1, None)
+    with pytest.raises(ValueError):
+        vllm.protocol.Question(type="bbox", instructions="x", criteria=["a", "b"])
 
 
 def test_sglang_grounding_head_and_pooler_match_the_native_head(sglang):
