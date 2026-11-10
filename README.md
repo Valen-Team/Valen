@@ -376,7 +376,7 @@ from transformers import AutoModel
 
 model = (
     AutoModel.from_pretrained(
-        "Valen-Team/Valen-2B",
+        "Valen-Team/Valen-Decision-1.5-2B",
         trust_remote_code=True,
         dtype="auto",
         attn_implementation="sdpa",
@@ -475,7 +475,7 @@ Download and unpack the media, then run the [evaluation script](evaluation/visua
 hf download Valen-Team/VisualDecisionBench --repo-type dataset --local-dir data/VisualDecisionBench
 python data/VisualDecisionBench/unpack_assets.py
 python -m evaluation.visualdecisionbench.evaluate \
-  --model Valen-Team/Valen-2B --data data/VisualDecisionBench \
+  --model Valen-Team/Valen-Decision-1.5-2B --data data/VisualDecisionBench \
   --output output/visualdecisionbench
 ```
 
@@ -483,7 +483,7 @@ Add `--lora --revision lora-ckpt` to evaluate the earlier LoRA model. Outputs: `
 
 ### 4. Training and fine-tuning
 
-Start with complete Valen-0.8B and LoRA SFT. Head warmup / joint SFT from Qwen is not language-model pretraining. RLCD is experimental.
+Start with complete Valen-Decision-1.5-0.8B and LoRA SFT. Head warmup / joint SFT from Qwen is not language-model pretraining. RLCD is experimental.
 
 [Methods and configuration](https://valen-team.github.io/docs/valen/training/) · [complete executable domain recipe](https://valen-team.github.io/cookbook/domain-finetuning/) · [save, resume and export](https://valen-team.github.io/docs/valen/checkpoints/)
 
@@ -533,7 +533,7 @@ If you use Valen-Decision in your work, please cite this repository:
 @misc{valen,
   author       = {{Valen Team}},
   title        = {Valen-Decision},
-  version      = {0.3.0},
+  version      = {0.4.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
   year         = {2026},

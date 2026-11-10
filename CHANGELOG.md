@@ -6,6 +6,18 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+### Docs
+- Point the README Transformers and VisualDecisionBench evaluation examples to Valen-Decision-1.5-2B, and the fine-tuning guidance to Valen-Decision-1.5-0.8B.
+
+## [0.4.0] - 2026-11-09
+
+### Models
+- Valen-Decision-1.5 in five sizes, with block-bidirectional attention and a bbox grounding head; the native weights store the backbone in BF16 and the decision and grounding heads in FP32. The 27B model is built on Qwen3.8-27B, the other sizes on Qwen3.5.
+  - Native weights (Transformers, fine-tuning): [Valen-Decision-1.5-0.8B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B), [Valen-Decision-1.5-2B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B), [Valen-Decision-1.5-4B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B), [Valen-Decision-1.5-9B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B), [Valen-Decision-1.5-27B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B)
+  - ONNX: [Valen-Decision-1.5-0.8B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-ONNX), [Valen-Decision-1.5-2B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-ONNX), [Valen-Decision-1.5-4B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-ONNX), [Valen-Decision-1.5-9B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-ONNX), [Valen-Decision-1.5-27B-ONNX](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-ONNX)
+  - GGUF (BF16): [Valen-Decision-1.5-0.8B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-GGUF), [Valen-Decision-1.5-2B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-GGUF), [Valen-Decision-1.5-4B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-GGUF), [Valen-Decision-1.5-9B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-GGUF), [Valen-Decision-1.5-27B-GGUF](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-GGUF)
+- The free API serves Valen-Decision-1.5 0.8B, 2B and 4B under the model IDs `valen-0.8b`, `valen-2b` and `valen-4b`.
+
 ### Code
 - Add the Valen-Decision-1.5 architecture on the existing `qwen` backend: block-structured full attention (`full_attention_mask`, applied only to the full-attention layers while linear attention stays causal), the `bbox` question type with a grounding head, and FSDP2 training for large backbones. Omitting the new options reproduces the previous generation.
 - Name the architecture generation explicitly in `valen/modeling/qwen/identity.py`; exports gain a `valen_decision_version` config field and identity fields in the manifest. The loading contract is unchanged — `model_type` stays `valen_qwen` and the exported `auto_map` classes keep their names — so published checkpoints and the vLLM/SGLang adapters continue to load.
@@ -18,6 +30,7 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 - Add this changelog, a releasing guide in `CONTRIBUTING.md`, and the 0.3.0 version in `pyproject.toml` and the citation. Trim README News to the three latest entries.
 - Add community projects and the Jev-ToM community evaluation.
 - Highlight handling of unknown choices; link API data handling documentation.
+- Release Valen-Decision-1.5 in both READMEs: model table, News, demos and evaluation chart; set version 0.4.0 in `pyproject.toml` and the citation.
 
 ## [0.3.0] - 2026-10-26
 
@@ -103,7 +116,8 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 ### Code
 - Initial open-source release: model implementation, data processing, SFT and experimental RLCD training, inference and evaluation commands.
 
-[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Valen-Team/Valen/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Valen-Team/Valen/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Valen-Team/Valen/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Valen-Team/Valen/compare/v0.2.1...v0.2.2

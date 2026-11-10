@@ -376,7 +376,7 @@ from transformers import AutoModel
 
 model = (
     AutoModel.from_pretrained(
-        "Valen-Team/Valen-2B",
+        "Valen-Team/Valen-Decision-1.5-2B",
         trust_remote_code=True,
         dtype="auto",
         attn_implementation="sdpa",
@@ -475,7 +475,7 @@ with Valen.local("Valen-Team/Valen-0.8B-ONNX", variant="fp32") as client:
 hf download Valen-Team/VisualDecisionBench --repo-type dataset --local-dir data/VisualDecisionBench
 python data/VisualDecisionBench/unpack_assets.py
 python -m evaluation.visualdecisionbench.evaluate \
-  --model Valen-Team/Valen-2B --data data/VisualDecisionBench \
+  --model Valen-Team/Valen-Decision-1.5-2B --data data/VisualDecisionBench \
   --output output/visualdecisionbench
 ```
 
@@ -483,7 +483,7 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 ### 4. 训练与微调
 
-优先从完整 Valen-0.8B 使用 LoRA SFT；从 Qwen 基座开始的评分头 warmup / joint SFT 不是语言模型预训练。RLCD 为实验性路径。
+优先从完整 Valen-Decision-1.5-0.8B 使用 LoRA SFT；从 Qwen 基座开始的评分头 warmup / joint SFT 不是语言模型预训练。RLCD 为实验性路径。
 
 [方法与配置](https://valen-team.github.io/zh-Hans/docs/valen/training/) · [完整可执行领域案例](https://valen-team.github.io/zh-Hans/cookbook/domain-finetuning/) · [保存、恢复和导出](https://valen-team.github.io/zh-Hans/docs/valen/checkpoints/)
 
@@ -533,7 +533,7 @@ python -m evaluation.visualdecisionbench.evaluate \
 @misc{valen,
   author       = {{Valen Team}},
   title        = {Valen-Decision},
-  version      = {0.3.0},
+  version      = {0.4.0},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
   year         = {2026},
