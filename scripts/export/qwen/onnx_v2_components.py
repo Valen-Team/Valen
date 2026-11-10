@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModel
 
-from format_export import HeadGraph, VisionGraph, save_external_graph
+from format_export import GroundingGraph, HeadGraph, VisionGraph, save_external_graph
 from format_runtime import vision_inputs
 
 p = argparse.ArgumentParser()
@@ -53,5 +53,14 @@ manifests["head"] = save_external_graph(
     {"features": {0: "candidates"}, "logits": {0: "candidates"}},
     directory / "head.onnx",
 )
+if getattr(model, "grounding", None) is not None:
+    manifests["grounding"] = save_external_graph(
+        GroundingGraph(model.grounding.float()),
+        (torch.zeros(hidden), torch.zeros(6, hidden)),
+        ["decision", "tokens"],
+        ["logits", "distances"],
+        {"tokens": {0: "image_tokens"}, "logits": {0: "image_tokens"}, "distances": {0: "image_tokens"}},
+        directory / "grounding.onnx",
+    )
 (directory / "tensor_manifest.json").write_text(json.dumps(manifests, indent=2))
 print("COMPONENTS_EXPORTED", flush=True)

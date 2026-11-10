@@ -1,8 +1,8 @@
 """System One's standard fields with Valen's native score-level budget."""
 
-from typing import Annotated, Union
+from typing import Annotated, Literal, Union
 
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from sglang.srt.entrypoints.openai.protocol import RequiredDecisionText
 from sglang.srt.entrypoints.systemone.protocol import (
@@ -21,8 +21,20 @@ class SystemOneScoreQuestion(StockSystemOneScoreQuestion):
     criteria: list[RequiredDecisionText] = Field(min_length=1, max_length=255)
 
 
+class SystemOneBboxQuestion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: Literal["bbox"]
+    instructions: RequiredDecisionText
+    image: int = Field(default=0, ge=0)
+
+
 Question = Annotated[
-    Union[SystemOneNoulQuestion, SystemOneChoiceQuestion, SystemOneScoreQuestion],
+    Union[
+        SystemOneNoulQuestion,
+        SystemOneChoiceQuestion,
+        SystemOneScoreQuestion,
+        SystemOneBboxQuestion,
+    ],
     Field(discriminator="type"),
 ]
 

@@ -77,6 +77,7 @@ class ValenEndpointPlugin:
         if isinstance(names, str):
             names = [names]
         limit = min(config.max_model_len, config.hf_config.valen_max_length)
+        fold = config.hf_config.valen_decision_version == "1.5"
 
         async def handle(body, raw_request):
             if body.model not in names:
@@ -89,7 +90,12 @@ class ValenEndpointPlugin:
                     lambda: [read_image(s) for s in sources]
                 )
                 ids, layout = encode_valen(
-                    tokenizer, body, messages, max_length=limit, image_token_counts=[]
+                    tokenizer,
+                    body,
+                    messages,
+                    max_length=limit,
+                    image_token_counts=[],
+                    fold=fold,
                 )
             except (ValueError, TypeError, OSError) as exc:
                 raise HTTPException(400, str(exc)) from exc

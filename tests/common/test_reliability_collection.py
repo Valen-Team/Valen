@@ -109,7 +109,7 @@ def test_historical_replay_checks_original_log_hashes_and_release_identity(tmp_p
                                                             "weights.safetensors": "a" * 64,
                                                             "native.py": "c" * 64}}}
     (release / "environment.json").write_text(json.dumps(published))
-    caches, _ = collect_study(data_root, model, source, release_root)
+    caches, _, _ = collect_study(data_root, model, source, release_root)
     assert sum(len(c["rows"]) for c in caches.values()) == 100
     assert all(c["identity"]["revision"] == "pinned-fixture" for c in caches.values())
     group_sets = [{r["group_id"] for r in c["rows"]} for c in caches.values()]
@@ -117,3 +117,45 @@ def test_historical_replay_checks_original_log_hashes_and_release_identity(tmp_p
     with (run / "predictions.jsonl").open("a") as stream: stream.write("\n")
     with pytest.raises(ValueError, match="integrity mismatch"):
         collect_study(data_root, model, source, release_root)
+
+
+def test_decision_15_replay_binds_run_artifacts_to_hub_commit_and_published_manifest(tmp_path):
+    from evaluation.reliability.banking77 import collect as collect_study, file_hash
+    model = "Valen-Decision-1.5-0.8B"
+    data_root, release_root = tmp_path / "data", tmp_path / "release"
+    run = data_root / "results/full" / model / "Banking77"
+    run.mkdir(parents=True)
+    (data_root / "datasets").mkdir()
+    source_path = data_root / "datasets/Banking77.tsv"
+    source_path.write_text("software-fixture-only")
+    artifacts = {"model.safetensors": "a" * 64, "config.json": "b" * 64, "tokenizer.json": "c" * 64}
+    runtime = {"model": "/local/" + model, "revision": "main", "execution": "shared_state", "attention": "sdpa",
+               "dtype": "torch.bfloat16", "temperature": 1.0, "artifacts_sha256": artifacts}
+    manifest = {"signature": {"limit": None, "dataset_sha256": file_hash(source_path),
+                               "source_sha256": {"adapter.py": "d" * 64}}, "runtime": runtime}
+    (run / "manifest.json").write_text(json.dumps(manifest))
+    keys = [f"c{i}" for i in range(77)]
+    question = {"type": "choice", "instructions": "route", "criteria": dict.fromkeys(keys, "fixture description")}
+    source = [{"index": str(i), "request": {"state": f"fixture ticket {i}", "questions": {"q": question}},
+               "targets": {"q": "c0"}} for i in range(100)]
+    p = dict.fromkeys(keys, .2 / 76); p["c0"] = .8
+    predictions = [{"index": str(i), "status": "ok", "response": {"answers": {"q": {"probabilities": p}}}}
+                   for i in range(100)]
+    (run / "predictions.jsonl").write_text("\n".join(json.dumps(r) for r in predictions))
+    (run / "metrics.json").write_text(json.dumps({"predictions_sha256": file_hash(run / "predictions.jsonl"),
+                                                 "manifest_sha256": file_hash(run / "manifest.json")}))
+    release = release_root / "runs" / model / "DecisionIndex_Text"
+    release.mkdir(parents=True)
+    (release / "manifest.json").write_text(json.dumps({"runtime": {"artifacts_sha256": artifacts}}))
+    hub = {model: {"repo_id": "Valen-Team/" + model, "revision": "commit-fixture",
+                   "files_sha256": {**artifacts, "README.md": "e" * 64}}}
+    caches, _, _ = collect_study(data_root, model, source, release_root, "decision-1.5", hub)
+    assert all(c["identity"]["revision"] == "commit-fixture" and c["identity"]["artifacts_sha256"] == artifacts
+               for c in caches.values())
+    hub[model]["files_sha256"]["model.safetensors"] = "f" * 64
+    with pytest.raises(ValueError, match="Hugging Face repository"):
+        collect_study(data_root, model, source, release_root, "decision-1.5", hub)
+    hub[model]["files_sha256"]["model.safetensors"] = "a" * 64
+    (release / "manifest.json").write_text(json.dumps({"runtime": {"artifacts_sha256": {**artifacts, "config.json": "f" * 64}}}))
+    with pytest.raises(ValueError, match="published Valen-Decision-1.5 run manifest"):
+        collect_study(data_root, model, source, release_root, "decision-1.5", hub)

@@ -34,6 +34,11 @@ HOOKS = (
         "AROUND",
     ),
     (
+        "sglang.srt.layers.radix_attention.RadixAttention.forward",
+        "block_attention_forward",
+        "AROUND",
+    ),
+    (
         "sglang.srt.multimodal.processors.qwen_vl.QwenVLImageProcessor.__init__",
         "prepare_image_processor",
         "BEFORE",

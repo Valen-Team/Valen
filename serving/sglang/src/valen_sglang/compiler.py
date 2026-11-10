@@ -3,6 +3,7 @@
 from copy import deepcopy
 
 from sglang.srt.utils import ImageData
+from valen_sglang.blocks import block_segments
 from valen_sglang.head import ValenQuestion, pack_valen_layout
 
 _NOUL = [
@@ -13,16 +14,35 @@ _NOUL = [
 
 def valen_options(question):
     if question.type == "noul":
-        if question.criteria is not None:
-            raise ValueError(
-                "Valen noul questions use fixed true/false descriptions; omit criteria"
-            )
         return _NOUL
+    if question.type == "bbox":
+        # Localization has no candidates; the image tokens are the choices.
+        return []
     if question.type == "choice":
         return list(question.criteria.items())
     if not 2 <= len(question.criteria) <= 255:
         raise ValueError("Valen score questions require 2 to 255 levels")
     return [(str(i), description) for i, description in enumerate(question.criteria)]
+
+
+def valen_instructions(question, fold):
+    """Valen-Decision-1.5 reads a noul rubric as part of the instructions."""
+    criteria = question.criteria if question.type == "noul" else None
+    if criteria is None:
+        return question.instructions
+    if not fold:
+        raise ValueError(
+            "Valen noul questions use fixed true/false descriptions; omit criteria"
+        )
+    if criteria.true is None or criteria.false is None:
+        raise ValueError("Noul criteria must define true and false")
+    return (
+        question.instructions
+        + "\nTrue criterion: "
+        + criteria.true
+        + "\nFalse criterion: "
+        + criteria.false
+    )
 
 
 def _text(value, tokenizer, *, allow_empty=False):
@@ -100,7 +120,20 @@ def valen_messages(request, tokenizer):
     return messages, images
 
 
-def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts):
+def encode_valen(
+    tokenizer,
+    request,
+    messages,
+    *,
+    max_length,
+    image_token_counts,
+    fold=False,
+    mask="causal",
+    image_grids=(),
+):
+    """``fold``, ``mask`` and ``image_grids`` carry the Valen-Decision-1.5 contract:
+    noul rubrics in the instructions, block ids for the full-attention mask, and
+    the merged (rows, cols) grid of each image for bbox questions."""
     # Tokenizing only the template leaves one placeholder per image. The native
     # multimodal processor expands them later, and the layout shifts accordingly.
     ids = list(
@@ -109,14 +142,18 @@ def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts
         )
     )
     context_end = len(ids)
+    # Block ids of the suffix tokens: glue 0, question i as i + 1.
+    segments = []
 
-    def append(text, span=None):
+    def append(text, span=None, segment=0):
         start = len(ids)
         if span is None:
             ids.extend(tokenizer.encode(text, add_special_tokens=False))
+            segments.extend([segment] * (len(ids) - start))
             return None
         encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
         ids.extend(encoded["input_ids"])
+        segments.extend([segment] * (len(ids) - start))
         indices = [
             i
             for i, (a, b) in enumerate(encoded["offset_mapping"])
@@ -129,11 +166,33 @@ def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts
     append("<|im_start|>user\n")
     questions = []
     for i, question in enumerate(request.questions.values()):
-        instruction = _text(question.instructions, tokenizer)
+        instruction = _text(valen_instructions(question, fold), tokenizer)
         prefix = f"Question {i + 1}\nTask: {question.type}\nQuestion: "
+        if question.type == "bbox":
+            if question.image >= len(image_grids):
+                raise ValueError(
+                    f"bbox refers to image {question.image}, state has {len(image_grids)}"
+                )
+            rows, cols = image_grids[question.image]
+            if rows * cols != image_token_counts[question.image]:
+                raise ValueError("Image tokens do not match their grid")
+            # The image's first token once the engine expands the placeholders.
+            image_token = tokenizer.convert_tokens_to_ids("<|image_pad|>")
+            placeholders = [p for p in range(context_end) if ids[p] == image_token]
+            image_start = placeholders[question.image] + sum(
+                count - 1 for count in image_token_counts[: question.image]
+            )
+            instruction_span = append(
+                prefix + instruction + f"\nImage: {question.image + 1}\n",
+                (len(prefix), len(prefix) + len(instruction)),
+                i + 1,
+            )
+            questions.append((instruction_span, (), (image_start, rows, cols)))
+            continue
         instruction_span = append(
             prefix + instruction + "\nCandidates:\n",
             (len(prefix), len(prefix) + len(instruction)),
+            i + 1,
         )
         spans = []
         for key, description in valen_options(question):
@@ -142,20 +201,30 @@ def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts
             prefix = key + ": " if question.type != "score" else ""
             spans.append(
                 append(
-                    prefix + description, (len(prefix), len(prefix) + len(description))
+                    prefix + description,
+                    (len(prefix), len(prefix) + len(description)),
+                    i + 1,
                 )
             )
-            append("\n")
-        questions.append((instruction_span, tuple(spans)))
+            append("\n", segment=i + 1)
+        questions.append((instruction_span, tuple(spans), None))
     append("<|im_end|>\n<|im_start|>assistant\n")
     layout_questions = []
-    for i, (instruction, candidates) in enumerate(questions):
-        append(f"Question {i + 1} Decision:")
-        layout_questions.append(ValenQuestion(instruction, candidates, len(ids) - 1))
-        append("\n")
+    for i, (instruction, candidates, image) in enumerate(questions):
+        append(f"Question {i + 1} Decision:", segment=i + 1)
+        layout_questions.append(
+            ValenQuestion(instruction, candidates, len(ids) - 1, image)
+        )
+        append("\n", segment=i + 1)
     length = len(ids) + sum(count - 1 for count in image_token_counts)
     if length > max_length:
         raise ValueError(
             f"Valen prompt has {length} tokens, exceeding max_length={max_length}; no truncation"
         )
-    return ids, pack_valen_layout(len(ids), context_end, layout_questions)
+    bbox = {i + 1 for i, q in enumerate(request.questions.values()) if q.type == "bbox"}
+    return ids, pack_valen_layout(
+        len(ids),
+        context_end,
+        layout_questions,
+        None if mask == "causal" else block_segments(mask, segments, bbox),
+    )

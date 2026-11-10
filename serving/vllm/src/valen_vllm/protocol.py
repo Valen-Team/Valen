@@ -14,8 +14,11 @@ class Question(BaseModel):
     @model_validator(mode="after")
     def check(self):
         if self.type == "noul":
-            if self.criteria is not None:
-                raise ValueError("noul has fixed true/false criteria")
+            if self.criteria is not None and (
+                not isinstance(self.criteria, dict)
+                or set(self.criteria) != {"true", "false"}
+            ):
+                raise ValueError("noul criteria must define true and false")
         elif self.type == "choice":
             if (
                 not isinstance(self.criteria, dict)

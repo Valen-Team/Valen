@@ -46,3 +46,4 @@ htmlcov/
 !/evaluation/reliability/results/
 /evaluation/reliability/results/*
 !/evaluation/reliability/results/banking77-v1/
+!/evaluation/reliability/results/banking77-decision-1.5/

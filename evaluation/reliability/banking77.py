@@ -2,6 +2,11 @@
 
 Run against the retained JevalKit data root. --stdout-gzip performs no writes
 and exports aggregate reports only, for bandwidth-conscious remote replay.
+
+--study decision-1.0 replays the 2026-10-16 Valen-0.8B/2B/4B runs against their
+environment.json release metadata. --study decision-1.5 replays Valen-Decision-1.5
+runs against the published Decision Index run manifests and a hub_identity.py file.
+The split seed, protocol, metrics and policy rules are shared by both studies.
 """
 import argparse
 import csv
@@ -68,7 +73,54 @@ def released_identity(manifest, release):
             "artifacts_sha256": recorded}, protocol
 
 
-def collect(root, model, source, release_root):
+def hub_identity(manifest, release, hub):
+    """Valen-Decision-1.5: bind every file the run hashed to the Hub commit and the published run."""
+    runtime = manifest["runtime"]
+    recorded = runtime["artifacts_sha256"]
+    if not any(k.endswith(".safetensors") for k in recorded) or "config.json" not in recorded:
+        raise ValueError("Run manifest did not hash weights and config")
+    if recorded != release["runtime"]["artifacts_sha256"]:
+        raise ValueError("Run artifacts differ from the published Valen-Decision-1.5 run manifest")
+    if any(hub["files_sha256"].get(k) != v for k, v in recorded.items()):
+        raise ValueError("Run artifacts differ from the Hugging Face repository at the recorded commit")
+    protocol = {"scenario": "BANKING77", "rendering": "JevalKit retained request, all 77 candidates in source order",
+                "execution": runtime["execution"], "attention": runtime["attention"], "raw_temperature": 1.0,
+                "source_sha256": manifest["signature"]["source_sha256"]}
+    return {"model": hub["repo_id"], "revision": hub["revision"],
+            "backend": f"transformers:{runtime['execution']}:{runtime['attention']}:cuda",
+            "precision": runtime["dtype"], "protocol_sha256": digest(protocol),
+            "artifacts_sha256": recorded}, protocol
+
+
+LIMITATIONS = {
+    "public": "Retrospective partition of a public benchmark already used in prior evaluations; not a fresh blind test.",
+    "groups": "No customer/conversation IDs; exact case/whitespace-normalized utterances stay together, semantic near duplicates are not certified absent.",
+    "overlap": "Pretraining and adaptation overlap with BANKING77 cannot be ruled out.",
+    "scope": "English 77-way intent recognition only; not evidence for images, video, open-set rejection or production financial decisions.",
+    "tokenizer": "Historical run did not separately hash tokenizer files; artifacts bind recorded weights/config/runtime code.",
+    "wilson": "Validation Wilson bounds are pointwise diagnostics; threshold search and distribution shift prevent a formal error guarantee."}
+
+STUDIES = {
+    "decision-1.0": {
+        "models": ("Valen-0.8B", "Valen-2B", "Valen-4B"),
+        "name": "BANKING77 retrospective reliability replay v1",
+        "dataset": "BANKING77 official test / retrospective three-way replay",
+        "prediction_source": lambda manifests: "retained JevalKit full runs, 2026-10-16; no new inference",
+        "identity_verification": "original metrics checksums verified retained predictions/manifest; recorded weights, config and runtime-code hashes matched published pinned release metadata",
+        "limitations": ("public", "groups", "overlap", "scope", "tokenizer", "wilson")},
+    "decision-1.5": {
+        "models": ("Valen-Decision-1.5-0.8B", "Valen-Decision-1.5-2B", "Valen-Decision-1.5-4B"),
+        "name": "BANKING77 reliability replay v1, Valen-Decision-1.5",
+        "dataset": "BANKING77 official test / three-way replay",
+        "prediction_source": lambda manifests: "JevalKit full runs with new native inference, {}, {}; raw T=1".format(
+            ", ".join(sorted({m["created_utc"][:10] for m in manifests})),
+            ", ".join(sorted({m["runtime"]["hardware"] for m in manifests}))),
+        "identity_verification": "run metrics checksums verified predictions/manifest; every weight, config, tokenizer, processor and runtime-code hash the run recorded equals the Hugging Face repository at the recorded commit (LFS SHA-256 for weights and tokenizer.json, downloaded bytes for the other files) and the artifact hashes in the published Valen-Decision-1.5 Decision Index run manifest",
+        "limitations": ("public", "groups", "overlap", "scope", "wilson")},
+}
+
+
+def collect(root, model, source, release_root, study="decision-1.0", hub=None):
     run = root / "results" / "full" / model / "Banking77"
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
@@ -78,8 +130,12 @@ def collect(root, model, source, release_root):
     dataset_hash = file_hash(source_path)
     if dataset_hash != manifest["signature"]["dataset_sha256"]:
         raise ValueError("Retained dataset hash changed")
-    release = json.loads((release_root / "runs" / model / "environment.json").read_text())
-    identity, protocol = released_identity(manifest, release)
+    if study == "decision-1.5":
+        release = json.loads((release_root / "runs" / model / "DecisionIndex_Text" / "manifest.json").read_text())
+        identity, protocol = hub_identity(manifest, release, hub[model])
+    else:
+        release = json.loads((release_root / "runs" / model / "environment.json").read_text())
+        identity, protocol = released_identity(manifest, release)
     path = run / "predictions.jsonl"
     prediction_hash, manifest_hash = file_hash(path), file_hash(manifest_path)
     original_metrics = json.loads((run / "metrics.json").read_text())
@@ -91,7 +147,7 @@ def collect(root, model, source, release_root):
     if len(by_id) != len(predictions) or set(by_id) != {r["index"] for r in source}:
         raise ValueError("Predictions must cover the exact source requests once")
     caches = {role: {"schema_version": 1, "identity": identity, "role": role,
-                     "dataset": {"name": "BANKING77 official test / retrospective three-way replay",
+                     "dataset": {"name": STUDIES[study]["dataset"],
                                  "sha256": dataset_hash, "source_url": SOURCE_URL,
                                  "predictions_sha256": prediction_hash, "manifest_sha256": manifest_hash,
                                  "original_metrics_sha256": file_hash(run / "metrics.json")},
@@ -116,18 +172,23 @@ def collect(root, model, source, release_root):
                     raise ValueError("Prediction candidate set mismatch")
                 row["probabilities"] = [p[k] for k in keys]
             caches[role]["rows"].append(row)
-    return caches, protocol
+    return caches, protocol, manifest
 
 
-def replay(root, release_root):
+def replay(root, release_root, study="decision-1.0", hub_path=None):
+    spec = STUDIES[study]
+    hub = json.loads(Path(hub_path).read_text()) if hub_path else None
+    if study == "decision-1.5" and hub is None:
+        raise ValueError("--study decision-1.5 requires --hub-identity from hub_identity.py")
     source = []
     with (root / "datasets" / "Banking77.tsv").open() as stream:
         for row in csv.DictReader(stream, delimiter="\t"):
             source.append({"index": row["index"], "request": json.loads(row["request"]),
                            "targets": json.loads(row["targets"])})
-    results = {}
-    for model in ("Valen-0.8B", "Valen-2B", "Valen-4B"):
-        caches, protocol = collect(root, model, source, release_root)
+    results, manifests = {}, []
+    for model in spec["models"]:
+        caches, protocol, manifest = collect(root, model, source, release_root, study, hub)
+        manifests.append(manifest)
         artifact = fit(caches["calibration"])
         policies = [select_policy(caches["policy"], artifact, b) for b in BUDGETS]
         result = report(caches["test"], artifact, policies[0])
@@ -135,21 +196,20 @@ def replay(root, release_root):
         result["operating_points"] = [{"validation_target": p["max_error"], "policy": p,
                                        "test": evaluate_policy(values, p)} for p in policies]
         result["study"] = {
-            "name": "BANKING77 retrospective reliability replay v1", "split_seed": SPLIT_SEED,
+            "name": spec["name"], "split_seed": SPLIT_SEED,
             "replay_sources_sha256": globals().get("_REPLAY_SOURCE_HASHES") or {
                 "valen/evaluation/calibration.py": file_hash(Path(__file__).resolve().parents[2] / "valen/evaluation/calibration.py"),
                 "evaluation/reliability/banking77.py": file_hash(__file__)},
             "split": "SHA-256(seed, normalized utterance hash) modulo 100: 0..29 calibration, 30..59 policy, 60..99 test",
             "protocol": protocol, "source_url": SOURCE_URL, "source_license": "CC-BY-4.0",
-            "prediction_source": "retained JevalKit full runs, 2026-10-16; no new inference",
-            "identity_verification": "original metrics checksums verified retained predictions/manifest; recorded weights, config and runtime-code hashes matched published pinned release metadata",
-            "limitations": ["Retrospective partition of a public benchmark already used in prior evaluations; not a fresh blind test.",
-                            "No customer/conversation IDs; exact case/whitespace-normalized utterances stay together, semantic near duplicates are not certified absent.",
-                            "Pretraining and adaptation overlap with BANKING77 cannot be ruled out.",
-                            "English 77-way intent recognition only; not evidence for images, video, open-set rejection or production financial decisions.",
-                            "Historical run did not separately hash tokenizer files; artifacts bind recorded weights/config/runtime code.",
-                            "Validation Wilson bounds are pointwise diagnostics; threshold search and distribution shift prevent a formal error guarantee."]}
+            "identity_verification": spec["identity_verification"],
+            "limitations": [LIMITATIONS[key] for key in spec["limitations"]]}
+        if hub_path:
+            result["study"]["hub_identity_sha256"] = file_hash(hub_path)
         results[model] = result
+    source_text = spec["prediction_source"](manifests)
+    for result in results.values():
+        result["study"]["prediction_source"] = source_text
     return results
 
 
@@ -157,6 +217,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--release-root", required=True, type=Path)
+    parser.add_argument("--study", choices=tuple(STUDIES), default="decision-1.0")
+    parser.add_argument("--hub-identity", type=Path, help="hub_identity.py output; required by decision-1.5")
     parser.add_argument("--output", type=Path)
     transport = parser.add_mutually_exclusive_group()
     transport.add_argument("--stdout-gzip", action="store_true")
@@ -164,7 +226,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not args.output and not args.stdout_gzip and not args.stdout_xz:
         parser.error("Use --output, --stdout-gzip or --stdout-xz")
-    results = replay(args.root, args.release_root)
+    results = replay(args.root, args.release_root, args.study, args.hub_identity)
     if args.stdout_gzip or args.stdout_xz:
         payload = json.dumps(results, allow_nan=False, separators=(",", ":")).encode()
         packed = lzma.compress(payload) if args.stdout_xz else gzip.compress(payload, mtime=0)

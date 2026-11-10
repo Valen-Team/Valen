@@ -11,10 +11,18 @@ from sglang.srt.arg_groups.overrides import (
 )
 from sglang.srt.constants import HEALTH_CHECK_RID_PREFIX
 from sglang.srt.layers.joint_schema_head import max_joint_prompt_tokens
+from sglang.srt.layers.radix_attention import RadixAttention
 from sglang.srt.managers.io_struct import EmbeddingReqInput, GenerateReqInput
 from sglang.srt.model_executor.cuda_graph_config import Backend, Phase, with_phase
 from sglang.srt.runtime_context import get_schedule
-from valen_sglang.head import ValenMixerHead, ValenPooler, parse_valen_layout
+from valen_sglang.blocks import block_attention
+from valen_sglang.grounding import GroundingHead
+from valen_sglang.head import (
+    ValenMixerHead,
+    ValenPooler,
+    parse_valen_layout,
+    valen_segments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +80,49 @@ def configure_capabilities(original, server_args):
 
 
 def initialize_head(result, self, config, *args, **kwargs):
-    if getattr(config, "valen_head", None) is not None:
-        self.pooler = ValenPooler(
-            ValenMixerHead(config.text_config.hidden_size, config.valen_head)
-        )
+    if getattr(config, "valen_head", None) is None:
+        return
+    hidden_size = config.text_config.hidden_size
+    grounding = config.valen_grounding
+    self.pooler = ValenPooler(
+        ValenMixerHead(hidden_size, config.valen_head),
+        GroundingHead(hidden_size, grounding["width"], grounding["hidden"])
+        if grounding
+        else None,
+    )
+    mask = config.valen_full_attention_mask
+    if mask == "prefix_lm":
+        raise ValueError("valen_full_attention_mask=prefix_lm is not served by SGLang")
+    if mask != "causal":
+        # Valen-Decision-1.5: the full-attention layers follow the request's blocks.
+        for layer in self.model.layers:
+            if isinstance(getattr(layer, "attn", None), RadixAttention):
+                layer.attn.valen_blocks = True
+
+
+def block_attention_forward(original, self, q, k, v, forward_batch, *args, **kwargs):
+    layouts = getattr(self, "valen_blocks", False) and forward_batch.decision_layouts
+    if not layouts or not forward_batch.forward_mode.is_extend():
+        return original(self, q, k, v, forward_batch, *args, **kwargs)
+    # One complete prefill per request, so the KV cache is neither read nor written.
+    lengths = forward_batch.extend_seq_lens_cpu
+    segments = getattr(forward_batch, "valen_segments", None)
+    if segments is None:
+        segments = forward_batch.valen_segments = [
+            layout and valen_segments(layout, length)
+            for layout, length in zip(layouts, lengths)
+        ]
+    q = q.view(-1, self.tp_q_head_num, self.qk_head_dim)
+    k = k.view(-1, self.tp_k_head_num, self.qk_head_dim)
+    v = v.view(-1, self.tp_v_head_num, self.v_head_dim)
+    outputs, offset = [], 0
+    for blocks, length in zip(segments, lengths):
+        rows = slice(offset, offset + length)
+        offset += length
+        if blocks is not None:
+            blocks = blocks.to(q.device)
+        outputs.append(block_attention(q[rows], k[rows], v[rows], blocks, self.scaling))
+    return torch.cat(outputs).reshape(-1, self.tp_q_head_num * self.v_head_dim)
 
 
 def load_weights(original, self, weights, *args, **kwargs):
@@ -83,15 +130,18 @@ def load_weights(original, self, weights, *args, **kwargs):
         return original(self, weights, *args, **kwargs)
     from sglang.srt.model_loader.weight_utils import default_weight_loader
 
-    params = dict(self.pooler.head.named_parameters())
+    params = {"head." + k: v for k, v in self.pooler.head.named_parameters()}
+    if self.pooler.grounding is not None:
+        params.update(
+            ("grounding." + k, v) for k, v in self.pooler.grounding.named_parameters()
+        )
     loaded = set()
 
     def backbone_weights():
         for name, weight in weights:
-            if name.startswith("head."):
-                key = name.removeprefix("head.")
-                default_weight_loader(params[key], weight)
-                loaded.add(key)
+            if name.startswith(("head.", "grounding.")):
+                default_weight_loader(params[name], weight)
+                loaded.add(name)
             elif name.startswith("backbone."):
                 yield "model." + name.removeprefix("backbone."), weight
             else:
@@ -99,7 +149,7 @@ def load_weights(original, self, weights, *args, **kwargs):
 
     result = original(self, backbone_weights(), *args, **kwargs)
     if isinstance(result, set):
-        result.update(f"pooler.head.{name}" for name in loaded)
+        result.update(f"pooler.{name}" for name in loaded)
     return result
 
 

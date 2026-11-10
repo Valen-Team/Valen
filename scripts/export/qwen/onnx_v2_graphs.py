@@ -38,7 +38,8 @@ for name in [
     "chat_template.jinja",
 ]:
     shutil.copyfile(source / name, output / name)
-for graph_name in ["vision", "head"]:
+grounding = (legacy / "onnx/grounding.onnx").exists()  # Valen-Decision-1.5 bbox head
+for graph_name in ["vision", "head"] + (["grounding"] if grounding else []):
     for path in (legacy / "onnx").glob(graph_name + "*"):
         if path.is_file():
             target = graphs / path.name
@@ -59,7 +60,7 @@ index_path = source / "model.safetensors.index.json"
 weight_map = json.loads(index_path.read_text())["weight_map"] if index_path.exists() else None
 tensor_manifest = json.loads((legacy / "onnx/tensor_manifest.json").read_text())
 checked = []
-for component in ["vision", "head"]:
+for component in ["vision", "head"] + (["grounding"] if grounding else []):
     for tensor_record in tensor_manifest[component]:
         native_name = (
             tensor_record["name"].replace("vision.", "backbone.visual.", 1)
@@ -122,6 +123,82 @@ if args.quantize_embedding:
     del quantizer
 
 head = onnx.load(legacy / "onnx/head.onnx", load_external_data=False)
+
+# Valen-Decision-1.5 attends in blocks. GroupQueryAttention is causal by construction, so the
+# full-attention layers become explicit attention over a caller-supplied additive mask:
+# ``block_mask`` [sequence, sequence], 0 where the key is visible. Linear attention stays causal.
+block_attention = config.get("valen_full_attention_mask", "causal") != "causal"
+if block_attention:
+    model.graph.initializer.extend(
+        [
+            nh.from_array(np.array([0, 1], np.int64), "valen/attn/mask_axes"),
+            nh.from_array(np.array([2], np.int64), "valen/attn/group_axis"),
+            nh.from_array(np.array([0, 0, -1], np.int64), "valen/attn/merge_heads"),
+        ]
+    )
+    explicit = [
+        h.make_node("Unsqueeze", ["block_mask", "valen/attn/mask_axes"], ["valen/attn/mask_fp32"]),
+        h.make_node("Cast", ["valen/attn/mask_fp32"], ["valen/attn/mask"], to=io_type),
+    ]
+    scalar = {T.FLOAT: np.float32, T.FLOAT16: np.float16}[io_type]
+    for node in model.graph.node:
+        if node.domain != "com.microsoft" or node.op_type != "GroupQueryAttention":
+            explicit.append(node)
+            continue
+        attrs = {a.name: h.get_attribute_value(a) for a in node.attribute}
+        heads, kv_heads = attrs["num_heads"], attrs["kv_num_heads"]
+        if attrs.get("do_rotary") or attrs.get("softcap") or attrs.get("local_window_size", -1) != -1:
+            raise ValueError("Unexpected GroupQueryAttention settings")
+        query, key, value = node.input[:3]
+        prefix = "valen/attn/" + node.name.strip("/").replace("/", "_")
+        model.graph.initializer.extend(
+            [
+                nh.from_array(np.array([0, 0, heads, -1], np.int64), prefix + "/q_shape"),
+                nh.from_array(np.array([0, 0, kv_heads, -1], np.int64), prefix + "/kv_shape"),
+                nh.from_array(np.array([1, 1, heads // kv_heads, 1, 1], np.int64), prefix + "/repeats"),
+                nh.from_array(np.array([0, heads, -1, config["text_config"]["head_dim"]], np.int64), prefix + "/grouped"),
+                nh.from_array(np.array(attrs["scale"], scalar), prefix + "/scale"),
+            ]
+        )
+
+        def heads_first(source, label, shape):
+            explicit.extend(
+                [
+                    h.make_node("Reshape", [source, prefix + shape], [f"{prefix}/{label}_split"]),
+                    h.make_node("Transpose", [f"{prefix}/{label}_split"], [f"{prefix}/{label}_heads"], perm=[0, 2, 1, 3]),
+                ]
+            )
+            return f"{prefix}/{label}_heads"
+
+        def per_query_head(source, label):
+            # Each key/value head serves heads // kv_heads consecutive query heads.
+            explicit.extend(
+                [
+                    h.make_node("Unsqueeze", [source, "valen/attn/group_axis"], [f"{prefix}/{label}_group"]),
+                    h.make_node("Tile", [f"{prefix}/{label}_group", prefix + "/repeats"], [f"{prefix}/{label}_tiled"]),
+                    h.make_node("Reshape", [f"{prefix}/{label}_tiled", prefix + "/grouped"], [f"{prefix}/{label}_full"]),
+                ]
+            )
+            return f"{prefix}/{label}_full"
+
+        q = heads_first(query, "q", "/q_shape")
+        k = per_query_head(heads_first(key, "k", "/kv_shape"), "k")
+        v = per_query_head(heads_first(value, "v", "/kv_shape"), "v")
+        explicit.extend(
+            [
+                h.make_node("Transpose", [k], [prefix + "/k_t"], perm=[0, 1, 3, 2]),
+                h.make_node("MatMul", [q, prefix + "/k_t"], [prefix + "/scores"]),
+                h.make_node("Mul", [prefix + "/scores", prefix + "/scale"], [prefix + "/scaled"]),
+                h.make_node("Add", [prefix + "/scaled", "valen/attn/mask"], [prefix + "/masked"]),
+                h.make_node("Softmax", [prefix + "/masked"], [prefix + "/probs"], axis=-1),
+                h.make_node("MatMul", [prefix + "/probs", v], [prefix + "/mixed"]),
+                h.make_node("Transpose", [prefix + "/mixed"], [prefix + "/mixed_t"], perm=[0, 2, 1, 3]),
+                h.make_node("Reshape", [prefix + "/mixed_t", "valen/attn/merge_heads"], [node.output[0]]),
+            ]
+        )
+    del model.graph.node[:]
+    model.graph.node.extend(explicit)
+    model.graph.input.append(h.make_tensor_value_info("block_mask", T.FLOAT, ["sequence_length", "sequence_length"]))
 # The upstream builder emits ORT's experimental default-domain RMSNorm.
 # Lower it to standard ops so the artifact also passes the ONNX checker.
 lowered = []
@@ -192,9 +269,13 @@ model.graph.initializer.extend(head.graph.initializer)
 model.graph.input.append(h.make_tensor_value_info("role_spans", T.INT64, ["candidates", 4, 2]))
 del model.graph.output[:]
 model.graph.output.extend([h.make_tensor_value_info("logits", T.FLOAT, ["candidates"])])
+if grounding:
+    # The grounding graph reads the decision and image-token rows of the final hidden states.
+    nodes.append(h.make_node("Identity", ["valen/hidden"], ["final_hidden"]))
+    model.graph.output.append(h.make_tensor_value_info("final_hidden", T.FLOAT, ["sequence_length", hidden]))
 
 # Remove generation outputs and their unused dependencies, without loading GB weights.
-required = {"logits"}
+required = {item.name for item in model.graph.output}
 kept = []
 for node in reversed(model.graph.node):
     if any(name in required for name in node.output):
@@ -232,6 +313,8 @@ components = {
     "vision": [name for name in files if name.startswith("onnx/vision")],
     "decision": [name for name in files if name.startswith(("onnx/decision", "onnx/backbone", "onnx/head-"))],
 }
+if grounding:
+    components["grounding"] = [name for name in files if name.startswith("onnx/grounding")]
 
 
 def graph_schema(graph):
@@ -293,11 +376,14 @@ manifest = {
                 "embedding": "onnx/embedding.onnx",
                 "vision": "onnx/vision.onnx",
                 "decision": "onnx/decision.onnx",
+                **({"grounding": "onnx/grounding.onnx"} if grounding else {}),
             },
             "io_schema": {
                 "decision": graph_schema(model),
                 "embedding": graph_schema(embedding),
                 "vision": graph_schema(onnx.load(str(graphs / "vision.onnx"), load_external_data=False)),
+                **({"grounding": graph_schema(onnx.load(str(graphs / "grounding.onnx"), load_external_data=False))}
+                   if grounding else {}),
             },
             "quality_status": "candidate_requires_target_validation",
             "components": components,

@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "checks": [
+    "before: ECE, accuracy, proper-score means, risk counts, coverage and AURC",
+    "after: ECE, accuracy, proper-score means, risk counts, coverage and AURC"
+  ],
+  "scope": "aggregate arithmetic only; original prediction/data hashes and full replay establish input provenance"
+}

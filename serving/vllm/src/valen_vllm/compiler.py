@@ -20,16 +20,30 @@ _NOUL = [
 
 def valen_options(question):
     if question.type == "noul":
-        if question.criteria is not None:
-            raise ValueError(
-                "Valen noul questions use fixed true/false descriptions; omit criteria"
-            )
         return _NOUL
     if question.type == "choice":
         return list(question.criteria.items())
     if not 2 <= len(question.criteria) <= 255:
         raise ValueError("Valen score questions require 2 to 255 levels")
     return [(str(i), description) for i, description in enumerate(question.criteria)]
+
+
+def valen_instructions(question, fold):
+    """Valen-Decision-1.5 reads a noul rubric as part of the instructions."""
+    criteria = question.criteria if question.type == "noul" else None
+    if criteria is None:
+        return question.instructions
+    if not fold:
+        raise ValueError(
+            "Valen noul questions use fixed true/false descriptions; omit criteria"
+        )
+    return (
+        question.instructions
+        + "\nTrue criterion: "
+        + criteria["true"]
+        + "\nFalse criterion: "
+        + criteria["false"]
+    )
 
 
 def _text(value, tokenizer, *, allow_empty=False):
@@ -107,7 +121,9 @@ def valen_messages(request, tokenizer):
     return messages, images
 
 
-def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts):
+def encode_valen(
+    tokenizer, request, messages, *, max_length, image_token_counts, fold=False
+):
     # Tokenizing only the template leaves one placeholder per image. The native
     # multimodal processor expands them later, and the layout shifts accordingly.
     ids = list(
@@ -136,7 +152,7 @@ def encode_valen(tokenizer, request, messages, *, max_length, image_token_counts
     append("<|im_start|>user\n")
     questions = []
     for i, question in enumerate(request.questions.values()):
-        instruction = _text(question.instructions, tokenizer)
+        instruction = _text(valen_instructions(question, fold), tokenizer)
         prefix = f"Question {i + 1}\nTask: {question.type}\nQuestion: "
         instruction_span = append(
             prefix + instruction + "\nCandidates:\n",

@@ -4,6 +4,7 @@ import json
 import numpy as np
 import torch
 from torch import nn
+from transformers.models.qwen3_5 import modeling_qwen3_5
 from transformers.models.qwen3_5.modeling_qwen3_5 import (
     apply_rotary_pos_emb_vision, torch_recurrent_gated_delta_rule, Qwen3_5RMSNormGated,
 )
@@ -26,31 +27,51 @@ def export_delta(query, key, value, g, beta, **kwargs):
     return DeltaRule.apply(query, key, value, g, beta), None
 
 
+def export_conv1d(hidden_states, weight, bias=None, activation=None, **kwargs):
+    """The plain causal convolution, without the optional hub kernel."""
+    length = hidden_states.shape[-1]
+    out = nn.functional.conv1d(hidden_states, weight.unsqueeze(1), bias, padding=weight.shape[-1] - 1,
+                               groups=hidden_states.shape[1])[:, :, :length]
+    return out if activation is None else modeling_qwen3_5.ACT2FN[activation](out)
+
+
+def block_type(layer):
+    return getattr(layer, "block_type", None) or layer.layer_type
+
+
 class TextGraph(nn.Module):
-    def __init__(self, text):
+    """Language backbone. ``block_mask`` adds the Valen-Decision-1.5 ``attention_mask`` input:
+    an additive [sequence, sequence] mask for the full-attention layers, built by the caller
+    from the compiler's prefix length and segment ids. Linear attention layers stay causal."""
+
+    def __init__(self, text, block_mask=False):
         super().__init__()
         self.text = text
+        self.block_mask = block_mask
+        # The linear-attention layers call these module-level kernels; export the traceable ones.
+        modeling_qwen3_5.torch_chunk_gated_delta_rule = export_delta
+        modeling_qwen3_5.causal_conv1d_fn = export_conv1d
         for layer in text.layers:
-            if layer.layer_type == "linear_attention":
-                layer.linear_attn.chunk_gated_delta_rule = export_delta
-                layer.linear_attn.causal_conv1d_fn = None
+            if block_type(layer) == "linear_attention":
                 if not isinstance(layer.linear_attn.norm, Qwen3_5RMSNormGated):
                     norm = Qwen3_5RMSNormGated(layer.linear_attn.head_v_dim, eps=layer.linear_attn.layer_norm_epsilon)
                     norm.weight = layer.linear_attn.norm.weight
                     layer.linear_attn.norm = norm
 
-    def forward(self, input_ids, position_ids, visual_positions, visual_features):
+    def forward(self, input_ids, position_ids, visual_positions, visual_features, attention_mask=None):
         hidden = self.text.embed_tokens(input_ids)
         hidden = hidden[0].index_copy(0, visual_positions, visual_features).unsqueeze(0)
         length = input_ids.shape[1]
-        order = torch.arange(length, device=input_ids.device)
-        visible = order[None, :] <= order[:, None]
-        mask = torch.where(visible, 0.0, torch.finfo(torch.float32).min).reshape(1, 1, length, length)
+        if self.block_mask:
+            mask = attention_mask.reshape(1, 1, length, length)
+        else:
+            order = torch.arange(length, device=input_ids.device)
+            visible = order[None, :] <= order[:, None]
+            mask = torch.where(visible, 0.0, torch.finfo(torch.float32).min).reshape(1, 1, length, length)
         rotary = self.text.rotary_emb(hidden, position_ids)
         for layer in self.text.layers:
             hidden = layer(hidden, position_embeddings=rotary,
-                           attention_mask=None if layer.layer_type == "linear_attention" else mask,
-                           use_cache=False)
+                           attention_mask=None if block_type(layer) == "linear_attention" else mask)
         return self.text.norm(hidden)
 
 
@@ -83,6 +104,23 @@ class HeadGraph(nn.Module):
 
     def forward(self, features):
         return self.head.score_features(features)
+
+
+class GroundingGraph(nn.Module):
+    """Grounding head for bbox questions: token logits and edge distances in cell units.
+    The caller turns distances into a box with the image grid, as grounding.decode does."""
+
+    def __init__(self, grounding):
+        super().__init__()
+        self.grounding = grounding
+
+    def forward(self, decision, tokens):
+        g = self.grounding
+        d = g.decision_norm(decision)
+        k = g.key(g.token_norm(tokens))
+        logits = (k @ g.query(d)) / g.scale
+        distances = torch.nn.functional.softplus(g.regress(k * torch.sigmoid(g.gate(d)))) + 0.5
+        return logits, distances
 
 
 def lower_delta_nodes(model, config):
@@ -227,16 +265,23 @@ def export_onnx(model, destination):
         from format_runtime import vision_inputs
     directory = Path(destination) / "onnx"
     model.float().cpu().eval()
-    text = TextGraph(model.backbone.language_model)
+    # Valen-Decision-1.5 models attend in blocks; their text graph takes the mask as an input.
+    block_mask = getattr(model.config, "valen_full_attention_mask", "causal") != "causal"
+    text = TextGraph(model.backbone.language_model, block_mask)
     hidden = model.config.text_config.hidden_size
     text_inputs = (torch.arange(8).reshape(1, -1), torch.arange(8).reshape(1, 1, -1).expand(3, 1, -1),
                    torch.tensor([1, 2]), torch.zeros(2, hidden))
+    text_names = ["input_ids", "position_ids", "visual_positions", "visual_features"]
+    text_axes = {"input_ids": {1: "sequence"}, "position_ids": {2: "sequence"},
+                 "visual_positions": {0: "visual_tokens"}, "visual_features": {0: "visual_tokens"},
+                 "last_hidden_state": {1: "sequence"}}
+    if block_mask:
+        text_inputs += (torch.zeros(8, 8),)
+        text_names.append("attention_mask")
+        text_axes["attention_mask"] = {0: "sequence", 1: "sequence"}
     manifests = {}
-    manifests["text"] = save_external_graph(text, text_inputs,
-        ["input_ids", "position_ids", "visual_positions", "visual_features"], ["last_hidden_state"],
-        {"input_ids": {1: "sequence"}, "position_ids": {2: "sequence"},
-         "visual_positions": {0: "visual_tokens"}, "visual_features": {0: "visual_tokens"},
-         "last_hidden_state": {1: "sequence"}}, directory / "text.onnx", model.config.text_config)
+    manifests["text"] = save_external_graph(text, text_inputs, text_names, ["last_hidden_state"],
+                                            text_axes, directory / "text.onnx", model.config.text_config)
     print("EXPORTED text", destination, flush=True)
     config = model.config.vision_config.to_dict()
     patch_width = config["in_channels"] * config["temporal_patch_size"] * config["patch_size"] ** 2
@@ -252,8 +297,15 @@ def export_onnx(model, destination):
     print("EXPORTED vision", destination, flush=True)
     manifests["head"] = save_external_graph(HeadGraph(model.head), (torch.randn(3, 4, hidden),),
         ["features"], ["logits"], {"features": {0: "candidates"}, "logits": {0: "candidates"}}, directory / "head.onnx")
-    (directory / "tensor_manifest.json").write_text(json.dumps(manifests, indent=2) + "\n")
     print("EXPORTED head", destination, flush=True)
+    if getattr(model, "grounding", None) is not None:
+        manifests["grounding"] = save_external_graph(
+            GroundingGraph(model.grounding.float()), (torch.randn(hidden), torch.randn(6, hidden)),
+            ["decision", "tokens"], ["logits", "distances"],
+            {"tokens": {0: "image_tokens"}, "logits": {0: "image_tokens"}, "distances": {0: "image_tokens"}},
+            directory / "grounding.onnx")
+        print("EXPORTED grounding", destination, flush=True)
+    (directory / "tensor_manifest.json").write_text(json.dumps(manifests, indent=2) + "\n")
     return manifests
 
 
