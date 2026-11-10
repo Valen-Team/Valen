@@ -26,12 +26,12 @@ Use the official vLLM image. Replace the kit and checkpoint paths below:
 docker run --rm -it --gpus device=0 --ipc=host \
   -p 127.0.0.1:8000:8000 \
   -v /absolute/path/to/serving-kit/vllm:/opt/valen-kit:ro \
-  -v /absolute/path/to/Valen-2B:/models/Valen-2B:ro \
+  -v /absolute/path/to/Valen-Decision-1.5-2B:/models/Valen-Decision-1.5-2B:ro \
   --entrypoint bash \
-  docker.io/vllm/vllm-openai:nightly
+  docker.io/vllm/vllm-openai:v0.33.0
 ```
 
-Inside the container, `/opt/valen-kit` and `/models/Valen-2B` refer to those mounts. In an existing Python environment, substitute the actual paths below.
+Inside the container, `/opt/valen-kit` and `/models/Valen-Decision-1.5-2B` refer to those mounts. In an existing Python environment, substitute the actual paths below.
 
 ## Install and start
 
@@ -39,13 +39,13 @@ Install the plugin and start the service inside the container:
 
 ```bash
 bash /opt/valen-kit/install.sh
-MODEL=/models/Valen-2B MODEL_NAME=valen HOST=0.0.0.0 \
+MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
   CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh
 ```
 
 | Setting | Example | Purpose |
 | --- | --- | --- |
-| `MODEL` | `/models/Valen-2B` | Complete checkpoint directory |
+| `MODEL` | `/models/Valen-Decision-1.5-2B` | Complete checkpoint directory |
 | `MODEL_NAME` | `valen` | Model name sent in requests |
 | `HOST` / `PORT` | `0.0.0.0` / `8000` | Listen address and port inside the container |
 

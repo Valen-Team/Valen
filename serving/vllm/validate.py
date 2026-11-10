@@ -1,7 +1,7 @@
 """Compare native Valen serving with the checkpoint's Transformers implementation.
 
 Run on one CUDA GPU with the checkpoint already downloaded:
-  python validate.py --model-path /models/Valen-2B --output-dir /tmp/valen-check
+  python validate.py --model-path /models/Valen-Decision-1.5-2B --output-dir /tmp/valen-check
 
 The reference and server run in separate processes so neither retains the other's
 GPU allocations. Results include request token counts, probability differences,

@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8%2F2%2F4%2F9%2F27B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8/2/4/9/27B"></a>
-  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.0-0.8%2F2%2F4B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.0: 0.8/2/4B"></a>
+  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8B%E2%80%9327B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8B–27B"></a>
   <a href="https://huggingface.co/datasets/Valen-Team/VisualDecisionBench"><img src="https://img.shields.io/badge/Dataset-VisualDecisionBench-3964FE?style=flat&amp;labelColor=1E232C" alt="VisualDecisionBench"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-555555?style=flat&amp;labelColor=1E232C" alt="Apache 2.0"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-555555?style=flat&amp;labelColor=1E232C" alt="Python 3.10+"></a>

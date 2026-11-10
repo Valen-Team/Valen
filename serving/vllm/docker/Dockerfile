@@ -1,4 +1,4 @@
-FROM docker.io/vllm/vllm-openai:nightly
+FROM docker.io/vllm/vllm-openai:v0.33.0
 
 ENV PYTHONUNBUFFERED=1 VLLM_PLUGINS=valen VLLM_USE_V2_MODEL_RUNNER=0
 COPY serving/vllm /opt/valen/plugin

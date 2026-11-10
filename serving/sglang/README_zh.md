@@ -26,12 +26,12 @@ python serving/sglang/build_kit.py \
 docker run --rm -it --gpus device=0 --ipc=host \
   -p 127.0.0.1:30000:30000 \
   -v /absolute/path/to/serving-kit/sglang:/opt/valen-kit:ro \
-  -v /absolute/path/to/Valen-2B:/models/Valen-2B:ro \
+  -v /absolute/path/to/Valen-Decision-1.5-2B:/models/Valen-Decision-1.5-2B:ro \
   --entrypoint bash \
-  docker.io/lmsysorg/sglang:latest
+  docker.io/lmsysorg/sglang:v0.5.23
 ```
 
-容器内的 `/opt/valen-kit` 和 `/models/Valen-2B` 对应这两个挂载目录。使用已有 Python 环境时，将下文路径替换为实际目录。
+容器内的 `/opt/valen-kit` 和 `/models/Valen-Decision-1.5-2B` 对应这两个挂载目录。使用已有 Python 环境时，将下文路径替换为实际目录。
 
 ## 安装并启动
 
@@ -39,13 +39,13 @@ docker run --rm -it --gpus device=0 --ipc=host \
 
 ```bash
 bash /opt/valen-kit/install.sh
-MODEL=/models/Valen-2B MODEL_NAME=valen HOST=0.0.0.0 \
+MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
   CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh
 ```
 
 | 参数 | 示例 | 用途 |
 | --- | --- | --- |
-| `MODEL` | `/models/Valen-2B` | 完整模型目录 |
+| `MODEL` | `/models/Valen-Decision-1.5-2B` | 完整模型目录 |
 | `MODEL_NAME` | `valen` | 请求中的模型名 |
 | `HOST` / `PORT` | `0.0.0.0` / `30000` | 容器内监听地址与端口 |
 

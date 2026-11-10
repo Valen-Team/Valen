@@ -1,4 +1,4 @@
-FROM docker.io/lmsysorg/sglang:latest
+FROM docker.io/lmsysorg/sglang:v0.5.23
 
 ENV PYTHONUNBUFFERED=1 SGLANG_PLUGINS=valen
 COPY serving/sglang /opt/valen/plugin

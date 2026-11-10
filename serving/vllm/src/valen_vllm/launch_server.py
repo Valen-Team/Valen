@@ -14,7 +14,8 @@ def main():
     parser.add_argument("--max-model-len", type=int, default=8192)
     parser.add_argument("--max-num-seqs", type=int, default=8)
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.65)
-    args = parser.parse_args()
+    # Other arguments go to `vllm serve` as given, after the defaults below.
+    args, extra = parser.parse_known_args()
     plugins = os.environ.get("VLLM_PLUGINS", "valen").split(",")
     os.environ["VLLM_PLUGINS"] = ",".join(dict.fromkeys([*plugins, "valen"]))
     os.environ["VLLM_USE_V2_MODEL_RUNNER"] = "0"
@@ -46,11 +47,16 @@ def main():
         "--enforce-eager",
         "--no-enable-prefix-caching",
         "--no-enable-chunked-prefill",
+        # FlashInfer's GDN prefill drifts up to 0.02 from native and varies with
+        # batch composition; the Triton kernel matches native and is batch-invariant.
+        "--gdn-prefill-backend",
+        "triton",
         "--limit-mm-per-prompt",
         '{"image":16,"video":0}',
     ]
     if args.revision:
         command += ["--revision", args.revision]
+    command += extra
     os.execvp(command[0], command)
 
 
