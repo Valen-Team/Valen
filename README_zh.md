@@ -226,13 +226,14 @@ answer = response.json()["answers"][0]
 print(answer["probability"])  # 条件成立的概率，范围 0–1
 ```
 
-#### 三种原生输出
+#### 四种原生输出
 
 | 类型 | 问题字段 | 主要返回字段 |
 | --- | --- | --- |
 | `predicate` | `instructions` | `probability`：条件成立的概率 |
 | `choice` | `instructions`、`choices: [{value, description}, …]` | `choice` 和候选项 `probabilities` |
 | `score` | `instructions`、`levels: [{label, description}, …]` | `score` 和各档位 `probabilities` |
+| `bbox` | `instructions`、可选的 `image` 序号 | `bbox`、`point` 和 `confidence` |
 
 选择题可将上例中的 `questions[0]` 替换为：
 
@@ -264,6 +265,45 @@ print(answer["probability"])  # 条件成立的概率，范围 0–1
 ```
 
 `score` 是从 0 开始的档位索引的概率加权平均值；上面的三档范围为 0–2，五档则为 0–4。评分分布条目包含 `label`、数值索引 `value` 和 `probability`。`confidence` 是独立字段，不是评分或最大候选概率。
+
+#### Bbox 问题
+
+`bbox` 问题在图片中定位指令描述的目标。托管 API 可用 Valen-Decision-1.5 的 0.8B、2B、4B（`valen-0.8b`、`valen-2b`、`valen-4b`）回答，每个请求一张图片。下载示例图片，并以 `input_image` data URL 的形式发送：
+
+```bash
+curl -fL https://valen-team.github.io/cookbook/code/media/mug-counter.jpg -o mug-counter.jpg
+```
+
+```python
+import base64
+import requests
+
+with open("mug-counter.jpg", "rb") as f:
+    image_url = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("ascii")
+
+response = requests.post(
+    "https://api.valen-team.workers.dev/v1/decisions",
+    headers={"Origin": "https://valen-team.github.io"},
+    json={
+        "model": "valen-2b",
+        "input": [{"role": "user", "content": [
+            {"type": "input_image", "image_url": image_url},
+        ]}],
+        "questions": [{
+            "name": "mug",
+            "type": "bbox",
+            "instructions": "The blue mug.",
+        }],
+    },
+    timeout=120,
+)
+response.raise_for_status()
+answer = response.json()["answers"][0]
+print(answer["bbox"], answer["point"], answer["confidence"])
+# [0.2828, 0.2748, 0.8247, 0.7727] [0.5537, 0.5238] 0.9027
+```
+
+`bbox` 为 `[x1, y1, x2, y2]`，`point` 为框的中心点 `[x, y]`，均按图片宽高归一化到 0–1。bbox 问题没有候选项；`image` 是待定位图片从 0 开始的序号，默认 `0`。它可以与判断、选择、评分问题放在同一请求中。字段说明和本地运行方式见 [bbox 问题](https://valen-team.github.io/zh-Hans/docs/valen/bbox/)。
 
 #### 免费额度与更高额度
 

@@ -226,13 +226,14 @@ answer = response.json()["answers"][0]
 print(answer["probability"])  # Probability the condition is true, from 0 to 1
 ```
 
-#### Three native output types
+#### Four native output types
 
 | Type | Question fields | Main answer fields |
 | --- | --- | --- |
 | `predicate` | `instructions` | `probability`: probability the condition is true |
 | `choice` | `instructions`, `choices: [{value, description}, …]` | `choice` and candidate `probabilities` |
 | `score` | `instructions`, `levels: [{label, description}, …]` | `score` and level `probabilities` |
+| `bbox` | `instructions`, optional `image` index | `bbox`, `point` and `confidence` |
 
 For a choice question, replace `questions[0]` in the example with:
 
@@ -264,6 +265,45 @@ For a score, supply ordered levels:
 ```
 
 `score` is the probability-weighted average of level indices starting at 0: the three levels above span 0–2; five levels span 0–4. Score distribution entries contain `label`, numeric index `value`, and `probability`. `confidence` is separate from the score and the maximum candidate probability.
+
+#### Bbox questions
+
+A `bbox` question locates what its instructions describe in an image. The hosted API answers it with Valen-Decision-1.5 0.8B, 2B and 4B (`valen-0.8b`, `valen-2b`, `valen-4b`), one image per request. Download the example image and send it as an `input_image` data URL:
+
+```bash
+curl -fL https://valen-team.github.io/cookbook/code/media/mug-counter.jpg -o mug-counter.jpg
+```
+
+```python
+import base64
+import requests
+
+with open("mug-counter.jpg", "rb") as f:
+    image_url = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("ascii")
+
+response = requests.post(
+    "https://api.valen-team.workers.dev/v1/decisions",
+    headers={"Origin": "https://valen-team.github.io"},
+    json={
+        "model": "valen-2b",
+        "input": [{"role": "user", "content": [
+            {"type": "input_image", "image_url": image_url},
+        ]}],
+        "questions": [{
+            "name": "mug",
+            "type": "bbox",
+            "instructions": "The blue mug.",
+        }],
+    },
+    timeout=120,
+)
+response.raise_for_status()
+answer = response.json()["answers"][0]
+print(answer["bbox"], answer["point"], answer["confidence"])
+# [0.2828, 0.2748, 0.8247, 0.7727] [0.5537, 0.5238] 0.9027
+```
+
+`bbox` is `[x1, y1, x2, y2]` and `point` is `[x, y]`, the centre of the box, both normalized to 0–1 against the image width and height. A bbox question has no candidates; `image` is the zero-based index of the image to search and defaults to `0`. It can sit next to predicate, choice and score questions in one request. See [bbox questions](https://valen-team.github.io/docs/valen/bbox/) for the fields and local runtimes.
 
 #### Free access and higher quotas
 
