@@ -24,6 +24,7 @@ docker buildx build --platform linux/amd64 --load \
 | --- | --- | --- |
 | `--model-path` | `Valen-Team/Valen-Decision-1.5-2B` | Hub 模型名或完整模型目录 |
 | `--served-model-name` | `valen` | 请求中的模型名 |
+| `--dtype` | `bfloat16` | 以 BF16 加载骨干网络，即发布权重的运行精度。不加时骨干可能按 FP32 加载，显存占用翻倍；Valen-Decision-1.5-27B 的 BF16 权重约 54 GB |
 | 端口映射 | `127.0.0.1:30000:30000` | 从本机访问服务 |
 
 ```bash
@@ -33,6 +34,7 @@ docker run --rm --gpus device=0 --ipc=host \
   valen-sglang:0.1.0-dev3 \
   --model-path Valen-Team/Valen-Decision-1.5-2B \
   --served-model-name valen \
+  --dtype bfloat16 \
   --host 0.0.0.0 --port 30000
 ```
 

@@ -40,7 +40,7 @@ docker run --rm -it --gpus device=0 --ipc=host \
 ```bash
 bash /opt/valen-kit/install.sh
 MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
-  CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh
+  CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh --dtype bfloat16
 ```
 
 | 参数 | 示例 | 用途 |
@@ -48,6 +48,7 @@ MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
 | `MODEL` | `/models/Valen-Decision-1.5-2B` | 完整模型目录 |
 | `MODEL_NAME` | `valen` | 请求中的模型名 |
 | `HOST` / `PORT` | `0.0.0.0` / `30000` | 容器内监听地址与端口 |
+| `--dtype` | `bfloat16` | 以 BF16 加载骨干网络，即发布权重的运行精度。不加时骨干可能按 FP32 加载，显存占用翻倍；Valen-Decision-1.5-27B 的 BF16 权重约 54 GB |
 
 服务启动后，从宿主机访问 `http://127.0.0.1:30000`。
 

@@ -345,6 +345,7 @@ docker run --rm --gpus device=0 --ipc=host \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
   valen-sglang:0.1.0-dev3 \
   --model-path Valen-Team/Valen-2B --served-model-name valen \
+  --dtype bfloat16 \
   --host 0.0.0.0 --port 30000
 ```
 

@@ -40,7 +40,7 @@ Install the plugin and start the service inside the container:
 ```bash
 bash /opt/valen-kit/install.sh
 MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
-  CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh
+  CUDA_VISIBLE_DEVICES=0 bash /opt/valen-kit/serve.sh --dtype bfloat16
 ```
 
 | Setting | Example | Purpose |
@@ -48,6 +48,7 @@ MODEL=/models/Valen-Decision-1.5-2B MODEL_NAME=valen HOST=0.0.0.0 \
 | `MODEL` | `/models/Valen-Decision-1.5-2B` | Complete checkpoint directory |
 | `MODEL_NAME` | `valen` | Model name sent in requests |
 | `HOST` / `PORT` | `0.0.0.0` / `30000` | Listen address and port inside the container |
+| `--dtype` | `bfloat16` | Load the backbone in BF16, the precision the released weights run in. Without it the backbone can load in FP32 and take twice the GPU memory; Valen-Decision-1.5-27B has about 54 GB of weights in BF16 |
 
 After startup, access the service from the host at `http://127.0.0.1:30000`.
 

@@ -24,6 +24,7 @@ Start the container and wait for the model to load. The example mounts the Huggi
 | --- | --- | --- |
 | `--model-path` | `Valen-Team/Valen-Decision-1.5-2B` | Hub model name or complete checkpoint directory |
 | `--served-model-name` | `valen` | Model name sent in requests |
+| `--dtype` | `bfloat16` | Load the backbone in BF16, the precision the released weights run in. Without it the backbone can load in FP32 and take twice the GPU memory; Valen-Decision-1.5-27B has about 54 GB of weights in BF16 |
 | Port mapping | `127.0.0.1:30000:30000` | Access from the local host |
 
 ```bash
@@ -33,6 +34,7 @@ docker run --rm --gpus device=0 --ipc=host \
   valen-sglang:0.1.0-dev3 \
   --model-path Valen-Team/Valen-Decision-1.5-2B \
   --served-model-name valen \
+  --dtype bfloat16 \
   --host 0.0.0.0 --port 30000
 ```
 
