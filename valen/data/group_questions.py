@@ -12,20 +12,41 @@ from .schema import validate_record
 
 
 def local_record(record, media_root):
-    record = deepcopy(record)
+    def local_path(path):
+        return str((media_root / path).resolve())
+
+    def local_item(item):
+        kind = item["type"]
+        if kind not in {"image_url", "video_url"}:
+            return item
+        url = item[kind]["url"]
+        if "://" in url:
+            raise ValueError("Materialize remote media before grouping questions")
+        path = local_path(url)
+        return item if path == url else {**item, kind: {**item[kind], "url": path}}
+
+    def local_list(func, items):
+        new_items = [func(item) for item in items]
+        return items if all(new is old for new, old in zip(new_items, items)) else new_items
+
+    def local_message(message):
+        if isinstance(message["content"], str):
+            return message
+        content = local_list(local_item, message["content"])
+        return message if content is message["content"] else {**message, "content": content}
+
+    def local_asset(asset):
+        path = local_path(asset["path"])
+        return asset if path == asset["path"] else {**asset, "path": path}
+
+    record = dict(record)
     state = record["request"]["state"]
     if isinstance(state, dict):
-        for message in state["messages"]:
-            if isinstance(message["content"], str):
-                continue
-            for item in message["content"]:
-                if item["type"] in {"image_url", "video_url"}:
-                    url = item[item["type"]]["url"]
-                    if "://" in url:
-                        raise ValueError("Materialize remote media before grouping questions")
-                    item[item["type"]]["url"] = str((media_root / url).resolve())
-    for asset in record.get("assets", []):
-        asset["path"] = str((media_root / asset["path"]).resolve())
+        messages = local_list(local_message, state["messages"])
+        if messages is not state["messages"]:
+            record["request"] = {**record["request"], "state": {**state, "messages": messages}}
+    if "assets" in record:
+        record["assets"] = local_list(local_asset, record["assets"])
     return record
 
 
