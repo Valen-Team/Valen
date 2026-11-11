@@ -22,7 +22,7 @@ docker buildx build --platform linux/amd64 --load \
 
 | 参数 | 默认示例 | 用途 |
 | --- | --- | --- |
-| `--model-path` | `Valen-Team/Valen-2B` | Hub 模型名或完整模型目录 |
+| `--model-path` | `Valen-Team/Valen-Decision-1.5-2B` | Hub 模型名或完整模型目录 |
 | `--served-model-name` | `valen` | 请求中的模型名 |
 | 端口映射 | `127.0.0.1:8000:8000` | 从宿主机访问 |
 
@@ -31,7 +31,7 @@ docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:8000:8000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
   valen-vllm:0.1.0-dev2 \
-  --model-path Valen-Team/Valen-2B \
+  --model-path Valen-Team/Valen-Decision-1.5-2B \
   --served-model-name valen \
   --host 0.0.0.0 --port 8000
 ```

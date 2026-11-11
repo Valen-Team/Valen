@@ -22,7 +22,7 @@ Start the container and wait for the model to load. The example mounts the Huggi
 
 | Setting | Example default | Purpose |
 | --- | --- | --- |
-| `--model-path` | `Valen-Team/Valen-2B` | Hub model name or complete checkpoint directory |
+| `--model-path` | `Valen-Team/Valen-Decision-1.5-2B` | Hub model name or complete checkpoint directory |
 | `--served-model-name` | `valen` | Model name sent in requests |
 | Port mapping | `127.0.0.1:30000:30000` | Access from the local host |
 
@@ -31,7 +31,7 @@ docker run --rm --gpus device=0 --ipc=host \
   -p 127.0.0.1:30000:30000 \
   -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
   valen-sglang:0.1.0-dev3 \
-  --model-path Valen-Team/Valen-2B \
+  --model-path Valen-Team/Valen-Decision-1.5-2B \
   --served-model-name valen \
   --host 0.0.0.0 --port 30000
 ```

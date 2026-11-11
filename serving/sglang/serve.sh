@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run inside the official SGLang environment after install.sh.
 set -euo pipefail
-MODEL="${MODEL:-Valen-Team/Valen-2B}"
+MODEL="${MODEL:-Valen-Team/Valen-Decision-1.5-2B}"
 PORT="${PORT:-30000}"
 HOST="${HOST:-127.0.0.1}"
 MODEL_NAME="${MODEL_NAME:-valen}"

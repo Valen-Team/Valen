@@ -15,7 +15,7 @@ class TestValenCompiler(unittest.TestCase):
     def setUpClass(cls):
         AutoConfig.register("valen_qwen", ValenQwenConfig, exist_ok=True)
         cls.tokenizer = AutoTokenizer.from_pretrained(
-            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-2B")
+            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-Decision-1.5-2B")
         )
 
     def request(self, state="请处理退款。", **kwargs):

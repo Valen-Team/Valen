@@ -137,7 +137,7 @@ class TestValenCompiler(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tokenizer = AutoTokenizer.from_pretrained(
-            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-2B")
+            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-Decision-1.5-2B")
         )
 
     def request(self, state="请处理退款。", **kwargs):
@@ -268,7 +268,7 @@ class TestValenServing(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.tokenizer = AutoTokenizer.from_pretrained(
-            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-2B")
+            os.environ.get("VALEN_TEST_MODEL", "Valen-Team/Valen-Decision-1.5-2B")
         )
 
     def setUp(self):

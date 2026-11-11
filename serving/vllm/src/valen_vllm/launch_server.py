@@ -6,7 +6,7 @@ import os
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-path", default="Valen-Team/Valen-2B")
+    parser.add_argument("--model-path", default="Valen-Team/Valen-Decision-1.5-2B")
     parser.add_argument("--served-model-name", default="valen")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
