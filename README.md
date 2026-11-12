@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8%2F2%2F4%2F9%2F27B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8/2/4/9/27B"></a>
-  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8B%E2%80%9327B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8B–27B"></a>
+  <a href="https://huggingface.co/spaces/Valen-Team/Valen-API"><img src="https://img.shields.io/badge/Playground-Try_it_online-3964FE?style=flat&amp;labelColor=1E232C" alt="Playground: try it online"></a>
   <a href="https://huggingface.co/datasets/Valen-Team/VisualDecisionBench"><img src="https://img.shields.io/badge/Dataset-VisualDecisionBench-3964FE?style=flat&amp;labelColor=1E232C" alt="VisualDecisionBench"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-555555?style=flat&amp;labelColor=1E232C" alt="Apache 2.0"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-555555?style=flat&amp;labelColor=1E232C" alt="Python 3.10+"></a>
@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>English</strong> · <a href="README_zh.md">简体中文</a><br>
-  <a href="https://valen-team.github.io/">Try Valen</a> · <a href="https://valen-team.github.io/docs/">Documentation</a> · <a href="https://valen-team.github.io/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
+  <a href="https://valen-team.github.io/">Try Valen</a> · <a href="https://huggingface.co/spaces/Valen-Team/Valen-API">Playground</a> · <a href="https://valen-team.github.io/docs/">Documentation</a> · <a href="https://valen-team.github.io/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ For a first try, use the [web experience or free API](https://valen-team.github.
 ## News
 
 - **2026-11-10**: Valen-Decision-1.5 GGUFs for every size from 0.8B to 27B are available with [GGUF runtime 0.2.0](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0), a Valen-patched llama.cpp server that takes text and image input and answers bbox questions. See the [GGUF guide](https://valen-team.github.io/docs/valen/gguf/).
-- **2026-11-09**: Released [Valen-Decision-1.5](https://huggingface.co/Valen-Team), covering every size from 0.8B to 27B. It adopts a new block-bidirectional attention mechanism, delivering state-of-the-art multimodal capability while keeping strong text capability. Valen-Decision-1.5 also uses a dual-head design that supports bbox output, showing strong grounding ability.
+- **2026-11-09**: Released [Valen-Decision-1.5](https://huggingface.co/Valen-Team), covering every size from 0.8B to 27B. It adopts a new block-bidirectional attention mechanism, delivering state-of-the-art multimodal capability while keeping strong text capability. Valen-Decision-1.5 also uses a dual-head design that supports bbox output, showing strong grounding ability. Read the [release post](https://valen-team.github.io/news/valen-decision-1.5/).
 - **2026-10-29**: The [Python SDK](https://github.com/Valen-Team/valen-sdk-python#compare-with-an-llm) adds `Valen.llm()`: send the same questions to GPT, Claude or Gemini and get the same typed answers back, to compare decisions, tokens and latency with Valen in your own code.
 - **2026-10-29**: Released the [Valen agent skill](https://github.com/Valen-Team/skills) for Claude Code, Cursor, Codex and other coding agents, with [`llms.txt`](https://valen-team.github.io/llms.txt), Markdown versions of every docs page and an [OpenAPI spec](https://valen-team.github.io/openapi.json). [JevalKit](https://github.com/Valen-Team/JevalKit) adds OpenAI, Anthropic and Gemini LLM baselines for side-by-side comparison.
 - **2026-10-26**: Qualified F32/Q8_0 GGUFs released in all three sizes; run them with the [Valen-patched llama.cpp and Ollama](https://valen-team.github.io/docs/valen/gguf/), which return candidate probabilities instead of generated text.
@@ -141,7 +141,7 @@ Game decision-making demos are hidden for now; the files stay in assets/demos/ga
 
 [JevalKit](https://github.com/Valen-Team/JevalKit) is our evaluation toolkit for decision models, with unified model interfaces, benchmark integration, and scoring protocols. Use it to evaluate and compare decision models across supported benchmarks.
 
-Valen is also integrated into the [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index). Visit the index for its evaluation results and comparisons with other decision models.
+Valen is also integrated into the [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index). On Decision Index 0.4.1, Valen-Decision-1.5-27B ranks first of 83 entrants on the public Vision track and fifth on the full Vision score, which adds private test sets (11 November 2026 snapshot). Visit the index for comparisons with other decision models, and see [per-size results](https://valen-team.github.io/docs/valen/decision-index/).
 
 **Valen-Decision-1.5** delivers state-of-the-art multimodal decision-making while keeping strong text decision-making. The Valen-Decision-1.5 series also performs strongly on tasks that output bounding boxes. The figure below shows the evaluation results of Valen-Decision-1.5-27B.
 
@@ -533,17 +533,17 @@ Start with complete Valen-Decision-1.5-0.8B and LoRA SFT. Head warmup / joint SF
 
 ## Community projects
 
-Selected public projects that integrate Valen models or use Valen datasets. Descriptions reflect the linked sources; inclusion does not imply affiliation, endorsement, or independent reproduction. Check each repository's license and supported model version before use.
+Projects built with Valen models and datasets. Open an [issue](https://github.com/Valen-Team/Valen/issues) to add yours.
 
-| Project | Connection to Valen | Evidence and scope |
+| Project | Connection to Valen | What it does |
 | --- | --- | --- |
-| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | Research evaluation | Evaluates Valen-Preview-0923 on Theory of Mind benchmarks and cites its model card in an [arXiv preprint](https://arxiv.org/abs/2610.18610); results apply to that checkpoint and the paper's evaluation settings. |
-| [vLLM Jev](https://github.com/mode-io/vllm-jev) | Model serving | Serves Valen-Preview-0923 for text, image and short-video decisions on documented Linux and Mac paths; see the [model matrix](https://github.com/mode-io/vllm-jev#supported-models). |
-| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | Reference serving | [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md) for Valen-Preview-0923, text and one image; no video or native Valen CUDA executor in this path. No repository license was found in GitHub metadata. |
-| [JevLight](https://github.com/usail-hkust/JevLight) | Simulation configuration | Traffic-signal simulation includes [Valen model configurations](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b); this establishes a configured integration, not completed results. No repository license was found in GitHub metadata. |
-| [reflex](https://github.com/ptlnextdoor/reflex) | Model experiments | [Valen-0.8B reference and MLX experiments](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md) on synthetic game frames; author reports limitations. No repository license was found in GitHub metadata. |
-| [LLM2Jev](https://github.com/Yinsongxu/LLM2Jev) | Dataset evaluation | Uses [Valen-Eval-Game](https://github.com/Yinsongxu/LLM2Jev#valen-eval-game) for a single-step Sokoban evaluation of its own inference pipeline. |
-| [tasksource](https://github.com/sileod/tasksource) | Dataset adaptation | Repackages Valen game examples into typed decisions; see its [data audit](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md) for split and label details. |
+| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | Research evaluation | Evaluates Valen-Preview-0923 on Theory of Mind benchmarks; see the [arXiv preprint](https://arxiv.org/abs/2610.18610). |
+| [vLLM Jev](https://github.com/mode-io/vllm-jev) | Model serving | Serves Valen-Preview-0923 for text, image and short-video decisions on Linux and Mac; see the [model matrix](https://github.com/mode-io/vllm-jev#supported-models). |
+| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | Reference serving | [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md) that serves Valen-Preview-0923 for text and single-image requests. |
+| [JevLight](https://github.com/usail-hkust/JevLight) | Simulation | Traffic-signal simulation with [Valen model configurations](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b). |
+| [reflex](https://github.com/ptlnextdoor/reflex) | Model experiments | [Valen-0.8B reference and MLX experiments](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md) on synthetic game frames. |
+| [LLM2Jev](https://github.com/Yinsongxu/LLM2Jev) | Dataset evaluation | Uses [Valen-Eval-Game](https://github.com/Yinsongxu/LLM2Jev#valen-eval-game) for a single-step Sokoban evaluation of its inference pipeline. |
+| [tasksource](https://github.com/sileod/tasksource) | Dataset adaptation | Repackages Valen game examples into typed decisions; see its [data audit](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md). |
 
 <a id="contributions"></a>
 

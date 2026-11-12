@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8%2F2%2F4%2F9%2F27B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8/2/4/9/27B"></a>
-  <a href="https://huggingface.co/Valen-Team"><img src="https://img.shields.io/badge/Valen--Decision--1.5-0.8B%E2%80%9327B-3964FE?style=flat&amp;labelColor=1E232C" alt="Valen-Decision-1.5: 0.8B–27B"></a>
+  <a href="https://huggingface.co/spaces/Valen-Team/Valen-API"><img src="https://img.shields.io/badge/Playground-%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-3964FE?style=flat&amp;labelColor=1E232C" alt="Playground：在线体验"></a>
   <a href="https://huggingface.co/datasets/Valen-Team/VisualDecisionBench"><img src="https://img.shields.io/badge/Dataset-VisualDecisionBench-3964FE?style=flat&amp;labelColor=1E232C" alt="VisualDecisionBench"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-555555?style=flat&amp;labelColor=1E232C" alt="Apache 2.0"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%2B-555555?style=flat&amp;labelColor=1E232C" alt="Python 3.10+"></a>
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="README.md">English</a> · <strong>简体中文</strong><br>
-  <a href="https://valen-team.github.io/zh-Hans/">在线体验</a> · <a href="https://valen-team.github.io/zh-Hans/docs/">文档</a> · <a href="https://valen-team.github.io/zh-Hans/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
+  <a href="https://valen-team.github.io/zh-Hans/">在线体验</a> · <a href="https://huggingface.co/spaces/Valen-Team/Valen-API">Playground</a> · <a href="https://valen-team.github.io/zh-Hans/docs/">文档</a> · <a href="https://valen-team.github.io/zh-Hans/docs/valen/api/">API</a> · <a href="https://github.com/Valen-Team/skills">Agent skill</a> · <a href="https://huggingface.co/Valen-Team">Hugging Face</a>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ Valen-Decision（万澜）将视觉感知引入 System One 决策。受 [Jev](ht
 ## 最新动态
 
 - **2026-11-10**：Valen-Decision-1.5 全尺寸（0.8B 至 27B）GGUF 随 [GGUF 运行时 0.2.0](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0) 发布；这是 Valen 补丁版 llama.cpp 服务，支持文本与图片输入，并可回答 bbox 问题。见 [GGUF 指南](https://valen-team.github.io/zh-Hans/docs/valen/gguf/)。
-- **2026-11-09**：发布 [Valen-Decision-1.5](https://huggingface.co/Valen-Team)，从 0.8B 到 27B 全尺寸覆盖。采用全新的分块双向注意力机制，在取得多模态 SOTA 处理能力的同时，保持强劲的文本处理能力。Valen-Decision-1.5 还采用双头机制，支持 bbox 输出，展现出极强的 Grounding 能力。
+- **2026-11-09**：发布 [Valen-Decision-1.5](https://huggingface.co/Valen-Team)，从 0.8B 到 27B 全尺寸覆盖。采用全新的分块双向注意力机制，在取得多模态 SOTA 处理能力的同时，保持强劲的文本处理能力。Valen-Decision-1.5 还采用双头机制，支持 bbox 输出，展现出极强的 Grounding 能力。详见[发布博文](https://valen-team.github.io/zh-Hans/news/valen-decision-1.5/)。
 - **2026-10-29**：[Python SDK](https://github.com/Valen-Team/valen-sdk-python/blob/main/README_zh.md#与大模型对比) 新增 `Valen.llm()`：把同一套问题交给 GPT、Claude 或 Gemini，返回同样的类型化答案，可在自己的代码里直接对比 Valen 与大模型的决策、token 和延迟。
 - **2026-10-29**：发布面向 Claude Code、Cursor、Codex 等编程 agent 的 [Valen agent skill](https://github.com/Valen-Team/skills)，官网同步提供 [`llms.txt`](https://valen-team.github.io/zh-Hans/llms.txt)、每个文档页的 Markdown 版本和 [OpenAPI 规格](https://valen-team.github.io/openapi.json)。[JevalKit](https://github.com/Valen-Team/JevalKit) 新增 OpenAI、Anthropic、Gemini 通用大模型基线，便于直接对比。
 - **2026-10-26**：三尺寸 F32/Q8_0 GGUF 已发布；通过 [Valen 补丁版 llama.cpp 和 Ollama](https://valen-team.github.io/zh-Hans/docs/valen/gguf/) 运行，直接返回候选项概率而不是生成文本。
@@ -141,7 +141,7 @@ Game decision-making demos are hidden for now; the files stay in assets/demos/ga
 
 [JevalKit](https://github.com/Valen-Team/JevalKit) 是我们的决策模型评测工具，提供统一的模型接口、Benchmark 接入和评分协议，可用于在支持的评测任务上评估与比较不同决策模型。
 
-Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index)，可前往查看该评测中的结果及与其他决策模型的对比。
+Valen 也已接入 [Jev Decision Index](https://huggingface.co/spaces/multimodalart/jev-decision-index)。在 Decision Index 0.4.1 上，Valen-Decision-1.5-27B 在公开视觉榜的 83 个参评模型中排第一，计入私有测试集的视觉总分排第五（2026 年 11 月 11 日榜单）。可前往查看与其他决策模型的对比，[各尺寸结果](https://valen-team.github.io/zh-Hans/docs/valen/decision-index/)见文档。
 
 **Valen-Decision-1.5** 在取得 SOTA 多模态决策能力的同时，也保有强劲的文本决策水平。同时，Valen-Decision-1.5 系列模型在输出 bbox 的任务上也取得了优异的效果。下图为 Valen-Decision-1.5-27B 的评测结果。
 
@@ -533,17 +533,17 @@ python -m evaluation.visualdecisionbench.evaluate \
 
 ## 社区项目
 
-以下公开项目接入了 Valen 模型或使用了 Valen 数据集。介绍依据链接中的资料整理；收录不代表合作、背书或已独立复现。使用前请查看各项目的许可证和支持的模型版本。
+基于 Valen 模型和数据集构建的项目。欢迎通过 [Issue](https://github.com/Valen-Team/Valen/issues) 提交你的项目。
 
-| 项目 | 与 Valen 的关系 | 证据与范围 |
+| 项目 | 与 Valen 的关系 | 做了什么 |
 | --- | --- | --- |
-| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | 研究评测 | 在心智理论基准上评测 Valen-Preview-0923，并在 [arXiv 预印本](https://arxiv.org/abs/2610.18610)中引用其模型卡；结果适用于该版本和论文所述评测设置。 |
-| [vLLM Jev](https://github.com/mode-io/vllm-jev) | 模型部署 | 在其说明的 Linux 和 Mac 路径中，为 Valen-Preview-0923 提供文本、图片与短视频决策服务，详见[模型列表](https://github.com/mode-io/vllm-jev#supported-models)。 |
-| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | 参考推理服务 | 提供 Valen-Preview-0923 的 [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md)，支持文本和单张图片；该路径不支持视频或原生 Valen CUDA 执行。GitHub 元数据未显示仓库许可证。 |
-| [JevLight](https://github.com/usail-hkust/JevLight) | 仿真配置 | 交通信号仿真项目包含 [Valen 模型配置](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b)；这说明已配置接入，不代表实验结果已经发布。GitHub 元数据未显示仓库许可证。 |
-| [reflex](https://github.com/ptlnextdoor/reflex) | 模型实验 | 在合成游戏画面上进行 [Valen-0.8B 参考与 MLX 实验](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md)，作者也记录了局限。GitHub 元数据未显示仓库许可证。 |
+| [Jev-ToM](https://github.com/HKUST-KnowComp/Jev-ToM) | 研究评测 | 在心智理论基准上评测 Valen-Preview-0923，见 [arXiv 预印本](https://arxiv.org/abs/2610.18610)。 |
+| [vLLM Jev](https://github.com/mode-io/vllm-jev) | 模型部署 | 在 Linux 和 Mac 上为 Valen-Preview-0923 提供文本、图片与短视频决策服务，见[模型列表](https://github.com/mode-io/vllm-jev#supported-models)。 |
+| [System1-Omni](https://github.com/InferMatrixLab/system1-omni) | 参考推理服务 | 提供 Valen-Preview-0923 的 [Python worker](https://github.com/InferMatrixLab/system1-omni/blob/main/recipe/valen/reference.md)，支持文本和单张图片请求。 |
+| [JevLight](https://github.com/usail-hkust/JevLight) | 仿真 | 交通信号仿真项目，包含 [Valen 模型配置](https://github.com/usail-hkust/JevLight/tree/main/config/valen-2b)。 |
+| [reflex](https://github.com/ptlnextdoor/reflex) | 模型实验 | 在合成游戏画面上进行 [Valen-0.8B 参考与 MLX 实验](https://github.com/ptlnextdoor/reflex/blob/main/bench/infer/RESULTS.md)。 |
 | [LLM2Jev](https://github.com/Yinsongxu/LLM2Jev) | 数据集评测 | 使用 [Valen-Eval-Game](https://github.com/Yinsongxu/LLM2Jev#valen-eval-game) 对自己的推理流程进行推箱子单步评测。 |
-| [tasksource](https://github.com/sileod/tasksource) | 数据集整理 | 将 Valen 游戏样本整理为类型化决策数据；划分和标签处理见其[数据审计](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md)。 |
+| [tasksource](https://github.com/sileod/tasksource) | 数据集整理 | 将 Valen 游戏样本整理为类型化决策数据，见其[数据审计](https://github.com/sileod/tasksource/blob/main/docs/jev/audits/game-expansion-audit.md)。 |
 
 <a id="contributions"></a>
 
