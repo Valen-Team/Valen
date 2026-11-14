@@ -575,7 +575,7 @@ If you use Valen-Decision in your work, please cite this repository:
 @misc{valen,
   author       = {{Valen Team}},
   title        = {Valen-Decision},
-  version      = {0.4.0},
+  version      = {0.4.1},
   howpublished = {GitHub - Valen-Team/Valen: A multimodal System One decision model for text, images and video.},
   note         = {GitHub repository},
   year         = {2026},

@@ -6,12 +6,18 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-14
+
 ### Models
 - Valen-Decision-1.5 GGUFs for the Valen custom llama.cpp runtime, replacing the BF16 container files: F32 and Q8_0 text files plus the vision file for [0.8B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-0.8B-GGUF), [2B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-2B-GGUF), [4B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-4B-GGUF) and [9B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-9B-GGUF), and the Q8_0 text file plus the vision file for [27B](https://huggingface.co/Valen-Team/Valen-Decision-1.5-27B-GGUF). Each repository carries `MANIFEST.json` with hashes and the measured differences against the native model.
 
 ### Code
 - GGUF runtime 0.2.0 ([`gguf-runtime-v0.2.0`](https://github.com/Valen-Team/Valen/releases/tag/gguf-runtime-v0.2.0)): the Valen-patched llama.cpp server now serves Valen-Decision-1.5 with block attention and noul-rubric folding, takes text and image input, and answers `bbox` questions through `/v1/systemone` and `/v1/decisions`. Valen-Decision-1.0 GGUFs load with it as well.
 - Add `serving/gguf/` with `valen-decision-1.5-runtime.patch`, the source change from runtime 0.1.0 to 0.2.0, and its apply, build and convert instructions; `docs/gguf-runtime-manifest.json` records the 0.2.0 artifact.
+- ONNX export for Valen-Decision-1.5 with the `cuda-fp16` and `web-portable` variants; the vLLM and SGLang plugins serve Valen-Decision-1.5 and vLLM answers `bbox` questions.
+- vLLM uses the Triton GDN prefill by default, the vLLM and SGLang Dockerfiles pin their engine images, the serving examples default to Valen-Decision-1.5-2B, and the SGLang launch commands pass `--dtype bfloat16`.
+- Faster data preparation: shared compilation on the `qwen` backend takes 9.1% less time ([#43](https://github.com/Valen-Team/Valen/pull/43)), and `group_questions` copies only the rewritten paths, with 98% fewer allocations ([#48](https://github.com/Valen-Team/Valen/pull/48)).
+- Banking77 reliability study for Valen-Decision-1.5 in `evaluation/reliability/`.
 
 ### Fixed
 - Fine-tuning a published Valen-Decision-1.5 model inherits `full_attention_mask` and `grounding_head` from its `config.json` and keeps the trained grounding head, the same way `qwen_execution`, `max_length` and `media_kwargs` are inherited. The fine-tuning recipes train a 1.5 model with `bbox_blocks` attention as published; a value set in the training config takes precedence ([#49](https://github.com/Valen-Team/Valen/issues/49)).
@@ -126,7 +132,8 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 ### Code
 - Initial open-source release: model implementation, data processing, SFT and experimental RLCD training, inference and evaluation commands.
 
-[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Valen-Team/Valen/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Valen-Team/Valen/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Valen-Team/Valen/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Valen-Team/Valen/compare/v0.2.2...v0.2.3
