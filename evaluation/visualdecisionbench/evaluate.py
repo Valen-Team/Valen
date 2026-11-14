@@ -88,7 +88,7 @@ def evaluate(model, data, output, device="cuda", execution="shared_state"):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default="Valen-Team/Valen-2B", help="Hub repository or local release directory")
+    parser.add_argument("--model", default="Valen-Team/Valen-Decision-1.5-2B", help="Hub repository or local release directory")
     parser.add_argument("--data", required=True, help="Unpacked dataset root or native subset JSONL")
     parser.add_argument("--output", required=True)
     parser.add_argument("--lora", action="store_true", help="Load the release's unmerged/ bundle")

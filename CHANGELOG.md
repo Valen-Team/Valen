@@ -6,6 +6,9 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+### Code
+- The fine-tuning recipes `sft_finetune_lora.json` and `sft_finetune_full.json` start from `models/Valen-Decision-1.5-0.8B`, and the VisualDecisionBench evaluation script defaults to `Valen-Team/Valen-Decision-1.5-2B`, matching the README.
+
 ## [0.4.1] - 2026-11-14
 
 ### Models
