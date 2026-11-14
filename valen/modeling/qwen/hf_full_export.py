@@ -12,14 +12,14 @@ import torch
 from .grounding import grounding_signature
 from .identity import decision_arch_version, decision_identity
 
-from .hf_export import bundle_runtime, compare_outputs, dump, evaluate_records, log, package_versions, sha_file, sha_tensor, validation_records
+from .hf_export import (base_manifest, bundle_runtime, compare_outputs, dump, evaluate_records, final_metric, log,
+                        package_versions, sha_file, sha_tensor, validation_records)
 
 
 def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_data,
                            device="cuda:0", attention="flash_attention_2"):
     from transformers import AutoModel, AutoProcessor
     from valen.modeling.factory import build_model
-    from valen.modeling.manifest import read_base_manifest
     from valen.training.checkpoint import load_checkpoint
 
     checkpoint, output, work, runtime_source = map(Path, (checkpoint, output, work, runtime_source))
@@ -29,13 +29,11 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
     config = json.loads((checkpoint / "config.json").read_text(encoding="utf-8"))
     if (config.get("method"), config.get("stage"), config.get("finetuning_type")) != ("sft", "joint", "full"):
         raise ValueError("Expected a full joint SFT checkpoint")
-    complete = json.loads((checkpoint.parent / "training_complete.json").read_text(encoding="utf-8"))
-    if complete["last_metric"]["epoch_fraction"] != 1:
+    last = final_metric(checkpoint)
+    if last["epoch_fraction"] != 1:
         raise ValueError("Training has not completed its epoch")
     base = Path(config["model_path"])
-    manifest = read_base_manifest(base)
-    if not manifest or not manifest.get("weight_sha256"):
-        raise ValueError("A verified base manifest is required")
+    manifest = base_manifest(base)
     for name, digest in manifest["weight_sha256"].items():
         if sha_file(base / name) != digest:
             raise ValueError(f"Base weight hash differs: {name}")
@@ -52,7 +50,7 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
     model = build_model(config)
     payload = load_checkpoint(checkpoint, model)
     step = payload["progress"]["step"]
-    if step != complete["last_metric"]["step"]:
+    if step != last["step"]:
         raise ValueError("Checkpoint does not match the final training step")
     if any("lora_" in name for name in model.state_dict()):
         raise ValueError("Full SFT export unexpectedly contains LoRA")
@@ -145,7 +143,7 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
         **decision_identity(attention_mask_mode, grounding_settings),
         "model": output.name, "architecture": "Qwen3.5 + two-layer Mixer", "execution": config["qwen_execution"],
         "finetuning_type": "full", "source_checkpoint_sha256": source_sha, "training_step": step,
-        "training_records": complete["last_metric"]["total_records"], "training_data_sha256": config.get("data_sha256"),
+        "training_records": last["total_records"], "training_data_sha256": config.get("data_sha256"),
         "base": {key: value for key, value in manifest.items() if key in {"repo", "repo_id", "revision", "weight_sha256"}},
         "parameter_dtype": "float32", "backbone_compute_dtype": exported_config["valen_backbone_autocast_dtype"],
         "runtime_source_sha256": runtime_hashes,

@@ -113,7 +113,7 @@ def export_adapters(checkpoint, merged_model, work, validation_data, device="cud
 
 原始 Qwen3.5 基座 + 未合并的 LoRA + FP32 Mixer + 训练后的视觉 merger。
 Original base with separate LoRA, Mixer, and trained visual merger weights.
-来源：1195k + JevBench 30k，两阶段 SFT，最终 step {parent["training_step"]}。
+来源模型训练至 step {parent["training_step"]}。 / The source model was trained to step {parent["training_step"]}.
 
 ## 文件 / Files
 

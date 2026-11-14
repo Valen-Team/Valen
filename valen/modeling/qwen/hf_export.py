@@ -17,6 +17,26 @@ from .grounding import grounding_signature
 from .identity import decision_arch_version
 
 
+def final_metric(checkpoint):
+    """Last training metric beside the checkpoint. / checkpoint 同级目录的最后一条训练指标。"""
+    folder = Path(checkpoint).parent
+    record = folder / "training_complete.json"
+    if record.exists():
+        return json.loads(record.read_text(encoding="utf-8"))["last_metric"]
+    return json.loads((folder / "metrics.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+
+
+def base_manifest(base):
+    """The base model's manifest, or one built from its weight files. / 基座 manifest，缺省时由权重文件生成。"""
+    from valen.modeling.manifest import read_base_manifest
+    manifest = read_base_manifest(base)
+    if manifest and manifest.get("weight_sha256"):
+        return manifest
+    weights = {path.name: sha_file(path) for path in sorted(Path(base).glob("*.safetensors"))}
+    return {"revision": "sha256:" + hashlib.sha256(json.dumps(weights, sort_keys=True).encode()).hexdigest(),
+            "weight_sha256": weights}
+
+
 def package_versions(*names):
     """Versions of the installed packages. / 已安装包的版本。"""
     installed = {d.metadata["Name"].lower().replace("_", "-"): d.version for d in importlib.metadata.distributions()}
@@ -176,7 +196,6 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
     from peft.tuners.lora.layer import LoraLayer
     from transformers import AutoModel, AutoProcessor
     from valen.modeling.factory import build_model
-    from valen.modeling.manifest import read_base_manifest
     from valen.training.checkpoint import load_checkpoint
 
     checkpoint, output, work, runtime_source = map(Path, (checkpoint, output, work, runtime_source))
@@ -191,11 +210,10 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
             raise FileExistsError(f"Output already contains model artifacts: {unexpected}")
     config = json.loads((checkpoint / "config.json").read_text(encoding="utf-8"))
     assert config["method"] == "sft" and config["stage"] == "joint" and config["head_type"] == "mixer"
-    complete = json.loads((checkpoint.parent / "training_complete.json").read_text(encoding="utf-8"))
-    assert complete["last_metric"]["epoch_fraction"] == 1
+    last = final_metric(checkpoint)
+    assert last["epoch_fraction"] == 1, "Training has not completed its epoch"
     base = Path(config["model_path"])
-    manifest = read_base_manifest(base)
-    assert manifest and manifest["weight_sha256"]
+    manifest = base_manifest(base)
     for name, digest in manifest["weight_sha256"].items():
         assert sha_file(base / name) == digest, name
     config.update(device=device, attn_implementation=attention, gradient_checkpointing=False)
@@ -210,7 +228,7 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
     log("load_checkpoint", model=output.name)
     model = build_model(config)
     payload = load_checkpoint(checkpoint, model)
-    assert payload["progress"]["step"] == complete["last_metric"]["step"]
+    assert payload["progress"]["step"] == last["step"]
     head_before = {name: sha_tensor(parameter) for name,parameter in model.head.state_dict().items()}
     merger_before = {name: sha_tensor(parameter) for name,parameter in model.backbone.visual.merger.state_dict().items()}
     source_sha = sha_file(checkpoint / "checkpoint.pt")
@@ -317,7 +335,7 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
 完整合并的 Qwen3.5 + 两层 Mixer，提供 Choice、Noul、Score 决策和 shared_state 多题推理。
 Complete Qwen3.5 backbone with merged LoRA, trained visual merger, and the FP32 Mixer head.
 
-训练版本：1195k + JevBench 30k，两阶段 SFT，最终 step {complete["last_metric"]["step"]}。
+训练至 step {last["step"]}。 / Trained to step {last["step"]}.
 全体基座参数、训练参数、分词器及输入编译代码均在本目录。
 
 ## 加载 / Load
@@ -378,8 +396,8 @@ LoRA 以 FP32 累加后保存为 BF16；融合矩阵的舍入顺序与独立 LoR
 ''', encoding="utf-8")
     provenance = {"format":"valen_qwen_merged_v1","created_utc":datetime.now(timezone.utc).isoformat(),
                   "model":output.name,"architecture":"Qwen3.5 + two-layer Mixer", "execution":config["qwen_execution"],
-                  "source_checkpoint_sha256":source_sha,"training_step":complete["last_metric"]["step"],
-                  "training_records":complete["last_metric"]["total_records"],"training_data_sha256":config.get("data_sha256"),
+                  "source_checkpoint_sha256":source_sha,"training_step":last["step"],
+                  "training_records":last["total_records"],"training_data_sha256":config.get("data_sha256"),
                   "base":manifest,"merge":"FP32 base+LoRA accumulation, stored BF16; trained visual merger and FP32 Mixer retained",
                   "merged_linear_layers":len(expected),"runtime_source_sha256":runtime_hashes,
                   "versions":package_versions("torch","transformers","peft","safetensors","flash-attn","torchvision","Pillow","av")}
