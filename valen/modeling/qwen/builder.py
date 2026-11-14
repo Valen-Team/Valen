@@ -36,6 +36,10 @@ def build_qwen(config):
         raise ValueError(f"Incomplete pretrained model load: {loading_info}")
     backbone = container.backbone if published else container.model
     head = container.head.float().requires_grad_(True) if published else None
+    # 保留已训练的定位头。 / Keep the trained grounding head.
+    trained_grounding = getattr(container, "grounding", None) if published else None
+    if trained_grounding is not None and grounding_signature({"grounding_head": container.config.valen_grounding}) != grounding:
+        trained_grounding = None
     del container  # Never execute or retain the generation/vocabulary output layer.
     backbone.requires_grad_(False)
     stage = config.get("stage", "joint")
@@ -64,7 +68,8 @@ def build_qwen(config):
         backbone.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     model = ValenQwen(backbone, head_config=head_config, head=head)
     if grounding is not None:
-        model.grounding = GroundingHead(backbone.config.text_config.hidden_size, grounding["width"], grounding["hidden"])
+        model.grounding = (trained_grounding.float().requires_grad_(True) if trained_grounding is not None else
+                           GroundingHead(backbone.config.text_config.hidden_size, grounding["width"], grounding["hidden"]))
     if dtype == torch.bfloat16 and (published or (finetuning == "full" and stage == "joint")):
         model.backbone_autocast_dtype = torch.bfloat16
     model.base_manifest = read_base_manifest(config["model_path"])

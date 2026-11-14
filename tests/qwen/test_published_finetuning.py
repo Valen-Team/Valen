@@ -219,6 +219,47 @@ def test_settings_are_inherited_recorded_and_incompatible_heads_rejected(publish
     assert overridden["media_kwargs"] == {}
 
 
+@pytest.fixture
+def published_1_5(published, tmp_path):
+    """The published fixture re-saved as Valen-Decision-1.5. / 1.5 代发布模型。"""
+    import shutil
+    folder, original = published
+    settings = original.config.to_dict()
+    settings.update(valen_full_attention_mask="bbox_blocks", valen_grounding={"width": 8, "hidden": 16})
+    settings.pop("valen_decision_version", None)
+    torch.manual_seed(17)
+    model = type(original)(type(original.config)(**settings)).eval()
+    model.load_state_dict(original.state_dict(), strict=False)
+    target = tmp_path / "complete-1.5"
+    shutil.copytree(folder, target)
+    model.save_pretrained(target)
+    weight_hash = file_sha256(target / "model.safetensors")
+    (target / "export_manifest.json").write_text(json.dumps({"format": "valen_qwen_full_sft_v1",
+        "source_checkpoint_sha256": weight_hash, "files_sha256": {"model.safetensors": weight_hash}}))
+    return target, model
+
+
+def test_published_1_5_architecture_is_inherited_with_its_trained_grounding_head(published, published_1_5):
+    folder, original = published_1_5
+    normalized = normalize_model_config(options(folder))
+    assert normalized["full_attention_mask"] == "bbox_blocks"
+    assert normalized["grounding_head"] == {"width": 8, "hidden": 16}
+    assert normalize_model_config(normalized) == normalized
+    loaded = build_model(options(folder))
+    assert loaded.full_attention_mask == "bbox_blocks"
+    for name, tensor in original.state_dict().items():
+        torch.testing.assert_close(loaded.state_dict()[name], tensor, rtol=0, atol=0)
+    assert all(p.requires_grad for p in loaded.grounding.parameters())
+    assert "grounding" in {g["name"] for g in optimizer_groups(loaded, normalized)}
+    # 显式设置仍然优先。 / Explicit settings still win.
+    explicit = normalize_model_config(options(folder, full_attention_mask="causal", grounding_head=None))
+    assert explicit["full_attention_mask"] == "causal" and explicit["grounding_head"] is None
+    assert build_model(explicit).grounding is None
+    # 1.0 发布模型保持原样。 / A published 1.0 model is unchanged.
+    legacy = normalize_model_config(options(published[0]))
+    assert legacy.get("full_attention_mask", "causal") == "causal" and "grounding_head" not in legacy
+
+
 @pytest.mark.parametrize("dtype", ["fp32", "bf16"])
 def test_published_fp32_weights_are_not_rounded_when_selecting_compute_dtype(published, dtype):
     folder, original = published

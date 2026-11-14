@@ -109,10 +109,15 @@ Loss: `CE + 5·L1 + 2·GIoU`.
 ```
 
 Omitting `full_attention_mask` and `grounding_head` reproduces the previous generation, which is why
-both default to the 1.0 values throughout. This snippet is an architecture contract, not a training
+both default to the 1.0 values throughout. When `model_path` is a published Valen model, both are
+inherited from its `config.json` (`valen_full_attention_mask`, `valen_grounding`) together with the
+trained grounding head, so fine-tuning a Valen-Decision-1.5 model keeps its architecture; a value set
+in the training config takes precedence. This snippet is an architecture contract, not a training
 recipe; see [training methods](https://valen-team.github.io/docs/valen/training/) and
 [configuration](https://valen-team.github.io/docs/valen/configuration/), and
 [HEADS.md](HEADS.md) for the decision heads.
 
 省略 `full_attention_mask` 与 `grounding_head` 即复现上一代，这也是两者在各处都以 1.0 取值为默认的原因。
+`model_path` 指向已发布的 Valen 模型时，两者连同已训练的定位头一起从其 `config.json`
+（`valen_full_attention_mask`、`valen_grounding`）继承，微调 Valen-Decision-1.5 模型即沿用其架构；训练配置里显式设置的值优先。
 本段是架构契约而非训练配方，训练方法与配置见上述链接，决策头见 [HEADS.md](HEADS.md)。

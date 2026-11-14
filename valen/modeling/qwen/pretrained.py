@@ -39,4 +39,8 @@ def with_published_settings(config):
         ("media_kwargs", "valen_media_kwargs", {}),
     ):
         config.setdefault(field, deepcopy(settings.get(saved, default)))
+    # Valen-Decision-1.5 架构随发布权重继承。 / The 1.5 architecture follows the published weights.
+    for field, saved in (("full_attention_mask", "valen_full_attention_mask"), ("grounding_head", "valen_grounding")):
+        if settings.get(saved) is not None:
+            config.setdefault(field, deepcopy(settings[saved]))
     return config
