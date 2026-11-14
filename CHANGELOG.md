@@ -6,6 +6,9 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+### Fixed
+- `merge_checkpoint.py` exports a LoRA fine-tune of a Valen-Decision-1.5 model: the exported config carries `valen_full_attention_mask`, `valen_grounding` and `valen_decision_version`, the trained grounding head is saved with the weights, and export validation runs `shared_state` for the block masks (`question_blocks`, `bbox_blocks`). The export manifest records the versions of the installed packages, so exporting with `--attn-implementation sdpa` works without `flash-attn` ([#49](https://github.com/Valen-Team/Valen/issues/49)).
+
 ### Code
 - The fine-tuning recipes `sft_finetune_lora.json` and `sft_finetune_full.json` start from `models/Valen-Decision-1.5-0.8B`, and the VisualDecisionBench evaluation script defaults to `Valen-Team/Valen-Decision-1.5-2B`, matching the README.
 

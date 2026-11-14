@@ -13,6 +13,15 @@ import sys
 
 import torch
 
+from .grounding import grounding_signature
+from .identity import decision_arch_version
+
+
+def package_versions(*names):
+    """Versions of the installed packages. / 已安装包的版本。"""
+    installed = {d.metadata["Name"].lower().replace("_", "-"): d.version for d in importlib.metadata.distributions()}
+    return {name: installed[name.lower()] for name in names if name.lower() in installed}
+
 
 def sha_file(path):
     digest = hashlib.sha256()
@@ -125,7 +134,9 @@ def evaluate_records(model, compiler_class, processor, config, records):
     torch.backends.cudnn.allow_tf32 = False
     results = {}
     model.eval()
-    for execution in ("shared_state", "question"):
+    # 块掩码的段 id 只由 shared_state 编译器给出。 / Block masks take segment ids from the shared_state compiler.
+    blocks = getattr(model, "full_attention_mask", "causal") in ("question_blocks", "bbox_blocks")
+    for execution in ("shared_state",) if blocks else ("shared_state", "question"):
         compiler = compiler_class(processor, max_length=config["max_length"], media_kwargs=config["media_kwargs"],
                                   execution=execution)
         for name, record in records:
@@ -241,12 +252,16 @@ def merge_checkpoint(checkpoint, output, work, runtime_source, validation_data, 
     merged_config = model.backbone.config.to_dict()
     for key in ("model_type", "architectures", "_name_or_path", "auto_map"):
         merged_config.pop(key, None)
+    mask, grounding = config.get("full_attention_mask", "causal"), grounding_signature(config)
     merged_config.update(valen_head=model.head_config if hasattr(model, "head_config") else
                          {key:config[key] for key in ("head_type","head_width","head_layers","head_token_hidden_dim","head_channel_hidden_dim")},
                          qwen_execution=config["qwen_execution"], valen_max_length=config["max_length"],
-                         valen_media_kwargs=config["media_kwargs"])
+                         valen_media_kwargs=config["media_kwargs"],
+                         valen_full_attention_mask=mask, valen_grounding=grounding,
+                         valen_decision_version=decision_arch_version(mask, grounding))
     merged_config = configuration.ValenQwenConfig(**merged_config)
-    merged = modeling.ValenQwenForDecisionMaking(merged_config, backbone=model.backbone, head=model.head).eval()
+    merged = modeling.ValenQwenForDecisionMaking(merged_config, backbone=model.backbone, head=model.head,
+                                                 grounding=getattr(model, "grounding", None)).eval()
     merged.requires_grad_(False)
     assert head_before == {name:sha_tensor(p) for name,p in merged.head.state_dict().items()}
     log("validate_merged", model=output.name, merged_linear_layers=len(expected))
@@ -367,7 +382,7 @@ LoRA 以 FP32 累加后保存为 BF16；融合矩阵的舍入顺序与独立 LoR
                   "training_records":complete["last_metric"]["total_records"],"training_data_sha256":config.get("data_sha256"),
                   "base":manifest,"merge":"FP32 base+LoRA accumulation, stored BF16; trained visual merger and FP32 Mixer retained",
                   "merged_linear_layers":len(expected),"runtime_source_sha256":runtime_hashes,
-                  "versions":{p:importlib.metadata.version(p) for p in ("torch","transformers","peft","safetensors","flash-attn","torchvision","Pillow","av")}}
+                  "versions":package_versions("torch","transformers","peft","safetensors","flash-attn","torchvision","Pillow","av")}
     provenance["files_sha256"] = {p.name:sha_file(p) for p in sorted(stage.iterdir()) if p.is_file()}
     dump(stage / "export_manifest.json", provenance)
     dump(work / (output.name+".validation.json"), validation)

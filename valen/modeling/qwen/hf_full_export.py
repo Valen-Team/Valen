@@ -12,7 +12,7 @@ import torch
 from .grounding import grounding_signature
 from .identity import decision_arch_version, decision_identity
 
-from .hf_export import bundle_runtime, compare_outputs, dump, evaluate_records, log, sha_file, sha_tensor, validation_records
+from .hf_export import bundle_runtime, compare_outputs, dump, evaluate_records, log, package_versions, sha_file, sha_tensor, validation_records
 
 
 def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_data,
@@ -149,8 +149,7 @@ def export_full_checkpoint(checkpoint, output, work, runtime_source, validation_
         "base": {key: value for key, value in manifest.items() if key in {"repo", "repo_id", "revision", "weight_sha256"}},
         "parameter_dtype": "float32", "backbone_compute_dtype": exported_config["valen_backbone_autocast_dtype"],
         "runtime_source_sha256": runtime_hashes,
-        "versions": {name: importlib.metadata.version(name) for name in
-                     ("torch", "transformers", "safetensors", "flash-attn", "torchvision", "Pillow", "av")},
+        "versions": package_versions("torch", "transformers", "safetensors", "flash-attn", "torchvision", "Pillow", "av"),
     }
     provenance["files_sha256"] = {path.name: sha_file(path) for path in sorted(output.iterdir()) if path.is_file()}
     dump(output / "export_manifest.json", provenance)
