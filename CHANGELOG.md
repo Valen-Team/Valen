@@ -6,6 +6,8 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-15
+
 ### Fixed
 - `merge_checkpoint.py` exports a LoRA fine-tune of a Valen-Decision-1.5 model: the exported config carries `valen_full_attention_mask`, `valen_grounding` and `valen_decision_version`, the trained grounding head is saved with the weights, and export validation runs `shared_state` for the block masks (`question_blocks`, `bbox_blocks`). The export manifest records the versions of the installed packages, so exporting with `--attn-implementation sdpa` works without `flash-attn` ([#49](https://github.com/Valen-Team/Valen/issues/49)).
 - `merge_checkpoint.py` runs directly on the output of `python -m valen.train` and a downloaded base model: it reads the final training metric from `metrics.jsonl`, and identifies a base model that ships no manifest by the hashes of its weight files. The exported usage note states the training step of the checkpoint ([#49](https://github.com/Valen-Team/Valen/issues/49)).
@@ -139,7 +141,8 @@ Minor versions mark model releases; patch versions mark code or documentation ch
 ### Code
 - Initial open-source release: model implementation, data processing, SFT and experimental RLCD training, inference and evaluation commands.
 
-[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Valen-Team/Valen/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/Valen-Team/Valen/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Valen-Team/Valen/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Valen-Team/Valen/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Valen-Team/Valen/compare/v0.2.3...v0.3.0
