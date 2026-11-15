@@ -19,7 +19,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ text integration</a>
+  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ text integration</a> · <a href="https://github.com/Valen-Team/valen-integrations">Workflow integrations</a>
+</p>
+
+<p align="center">
+  More from Valen Team: <a href="https://github.com/Valen-Team/Roller">Roller</a>, agent trajectory collection across models and Harnesses
 </p>
 
 <p align="center">
@@ -547,7 +551,7 @@ Projects built with Valen models and datasets. Open an [issue](https://github.co
 
 <a id="contributions"></a>
 
-## Contributions
+## Contributing
 
 Contributions to Valen are welcome. Open an [issue](https://github.com/Valen-Team/Valen/issues) to report a problem, share a use case or discuss experimental results. Submit a [pull request](https://github.com/Valen-Team/Valen/pulls) to improve the code or documentation, contribute training data or add evaluation tasks. Active contributors can become part of Valen's core development team.
 
@@ -557,9 +561,39 @@ Scan the QR code below to join the Valen WeChat group, discuss the project and s
   <img src="assets/figures/wechat_1116.jpg" alt="QR code for the Valen WeChat discussion group" width="240">
 </p>
 
+### Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Liuziyu77"><img src="https://github.com/Liuziyu77.png?size=128" width="64" height="64" alt="Liuziyu77"><br><sub><b>Liuziyu77</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yph22"><img src="https://github.com/yph22.png?size=128" width="64" height="64" alt="yph22"><br><sub><b>yph22</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SYuan03"><img src="https://github.com/SYuan03.png?size=128" width="64" height="64" alt="SYuan03"><br><sub><b>SYuan03</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/dexhunter"><img src="https://github.com/dexhunter.png?size=128" width="64" height="64" alt="dexhunter"><br><sub><b>dexhunter</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yuhangzang"><img src="https://github.com/yuhangzang.png?size=128" width="64" height="64" alt="yuhangzang"><br><sub><b>yuhangzang</b></sub></a>
+    </td>
+  </tr>
+</table>
+
+<a id="more-from-valen-team"></a>
+
+## More from Valen Team
+
+Valen-Decision is one of the open-source projects of [Valen Team](https://github.com/Valen-Team), which works on fast decision models, recursive self-improvement (RSI) and agents.
+
+[Roller](https://github.com/Valen-Team/Roller) collects agent trajectories across models and Harnesses. It runs tool-using agents such as Claude Code, Codex and OpenClaw in disposable Docker containers, grades benchmark tasks and exports SFT training data.
+
 <a id="license-and-acknowledgments"></a>
 
-## License and acknowledgments
+## License and acknowledgements
 
 The code is released under [Apache 2.0](LICENSE). Base models and source datasets retain their respective licenses.
 

@@ -19,7 +19,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ 文本集成</a>
+  <a href="https://github.com/Valen-Team/valen-sdk-python">Python SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-js">JavaScript SDK</a> · <a href="https://github.com/Valen-Team/valen-sdk-cpp">C++ 文本集成</a> · <a href="https://github.com/Valen-Team/valen-integrations/blob/main/README_zh.md">工作流集成</a>
+</p>
+
+<p align="center">
+  Valen Team 的更多项目：<a href="https://github.com/Valen-Team/Roller/blob/main/README_zh-CN.md">Roller</a>，面向多模型、多 Harness 的 Agent 轨迹采集框架
 </p>
 
 <p align="center">
@@ -556,6 +560,36 @@ python -m evaluation.visualdecisionbench.evaluate \
 <p align="center">
   <img src="assets/figures/wechat_1116.jpg" alt="Valen 微信讨论群二维码" width="240">
 </p>
+
+### 贡献者
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Liuziyu77"><img src="https://github.com/Liuziyu77.png?size=128" width="64" height="64" alt="Liuziyu77"><br><sub><b>Liuziyu77</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yph22"><img src="https://github.com/yph22.png?size=128" width="64" height="64" alt="yph22"><br><sub><b>yph22</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SYuan03"><img src="https://github.com/SYuan03.png?size=128" width="64" height="64" alt="SYuan03"><br><sub><b>SYuan03</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/dexhunter"><img src="https://github.com/dexhunter.png?size=128" width="64" height="64" alt="dexhunter"><br><sub><b>dexhunter</b></sub></a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/yuhangzang"><img src="https://github.com/yuhangzang.png?size=128" width="64" height="64" alt="yuhangzang"><br><sub><b>yuhangzang</b></sub></a>
+    </td>
+  </tr>
+</table>
+
+<a id="more-from-valen-team"></a>
+
+## Valen Team 的更多项目
+
+Valen-Decision 是 [Valen Team · 万澜](https://github.com/Valen-Team)的开源项目之一。组织关注快速决策模型、递归自我改进（RSI）与 Agent 智能体。
+
+[Roller](https://github.com/Valen-Team/Roller/blob/main/README_zh-CN.md) 是面向多模型、多 Harness 的 Agent 轨迹采集框架：在一次性 Docker 容器中运行 Claude Code、Codex、OpenClaw 等可调用工具的 Agent，完成 Benchmark 评分并导出 SFT 训练数据。
 
 <a id="许可与致谢"></a>
 
